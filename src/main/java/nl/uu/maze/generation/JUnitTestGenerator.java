@@ -753,8 +753,10 @@ public class JUnitTestGenerator {
     /**
      * Adds a method to the test class that sets the value of a field in an object
      * using reflection.
+     * 
+     * <p>The original addSetField.
      */
-    private void addSetFieldMethod() {
+    private void addSetFieldMethodOLD() {
         // Make sure to only add the method once
         if (setFieldAdded) {
             return;
@@ -772,6 +774,43 @@ public class JUnitTestGenerator {
         methodBuilder.addStatement("field.setAccessible(true)");
         methodBuilder.addStatement("field.set(obj, value)");
 
+        setFieldAdded = true;
+        classBuilder.addMethod(methodBuilder.build());
+    }
+    
+    /**
+     * Adds a method to the test class that sets the value of a field in an object
+     * using reflection.
+     * 
+     * <p>WP: also iterates over super-classes to find the field.
+     */
+    private void addSetFieldMethod() {
+        // Make sure to only add the method once
+        if (setFieldAdded) {
+            return;
+        }
+
+        MethodSpec.Builder methodBuilder = MethodSpec.methodBuilder("setField")
+                .addModifiers(Modifier.PRIVATE)
+                .addException(Exception.class)
+                .addParameters(List.of(ParameterSpec.builder(Object.class, "obj").build(),
+                        ParameterSpec.builder(String.class, "fieldName").build(),
+                        ParameterSpec.builder(Object.class, "value").build()))
+                .returns(void.class);
+
+
+        String stmt =  "$T C = obj.getClass() ;\n"
+                     + "$T field = null ;\n"
+                     + "while (C != null) {\n"
+        	         + "  try { field = C.getDeclaredField($L);\n"
+        		     + "        field.setAccessible(true);\n"
+        	         + "        field.set(obj, value);\n"
+        	         + "        return ; } \n"
+        	         + "  catch (NoSuchFieldException e) { C = C.getSuperclass() ; }\n"
+                     + "}\n"
+    	             + "throw new NoSuchFieldException() " ;
+        
+        methodBuilder.addStatement(stmt, Class.class, Field.class, "fieldName") ;
         setFieldAdded = true;
         classBuilder.addMethod(methodBuilder.build());
     }
