@@ -25,9 +25,9 @@ public class CobaMazeOnSVComp {
 		//String CUT = "cobabench.svcomp.float_nonlinear_calculation.Euler" ;
 		//String CUT = "cobabench.svcomp.float_nonlinear_calculation.Optimization" ;	
 		//String CUT = "cobabench.svcomp.MinePump.spec1_5_product1.Actions" ;			
-		//String CUT = "cobabench.mazebm.algorithms.BellmanFord_FunSat01" ;
-		//String CUT = "cobabench.mazebm.algorithms.BellmanFord_FunUnsat02" ;
-		String CUT = "cobabench.mazebm.algorithms.RedBlackTree_MemSat01.RedBlackTree_MemSat01" ;
+		//String CUT = "cobabench.svcomp.algorithms.BellmanFord_FunSat01" ;
+		//String CUT = "cobabench.svcomp.algorithms.BellmanFord_FunUnsat02" ;
+		String CUT = "cobabench.svcomp.algorithms.RedBlackTree_MemSat01.RedBlackTree_MemSat01" ;
 		
 		
 		String sp = " " ;
