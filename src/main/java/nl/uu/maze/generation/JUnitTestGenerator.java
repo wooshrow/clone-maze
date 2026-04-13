@@ -207,7 +207,7 @@ public class JUnitTestGenerator {
         	if (isExpectedException || 
         			(!EngineConfiguration.getInstance().surpressRegressionOracles 
         					&& ! EngineConfiguration.getInstance().propagateUnexpectedExceptions)) {
-        		//System.out.println(">>>>  adding test annotagion") ;
+        		//System.out.println(">>>>  adding test annotation") ;
         		testAnnotation.addMember("expected", "$T.class", result.getTargetExceptionClass());        
         	}
         	else {
@@ -296,7 +296,7 @@ public class JUnitTestGenerator {
             			AssertClass) ;
             } else {
                 // Check if return value is a reference to an input parameter
-                boolean isReference = false;
+                boolean isReferenceToInputParam = false;
                 boolean isPrimitive = isPrimitive(retval);
                 boolean isArray = retval.getClass().isArray();
                 // Only relevant for non-primitive values (and we handle arrays differently)
@@ -304,7 +304,7 @@ public class JUnitTestGenerator {
                     if (ctorArgs != null) {
                         for (int i = 0; i < ctorArgs.length; i++) {
                             if (ctorArgs[i] == retval) {
-                                isReference = true;
+                                isReferenceToInputParam = true;
                                 methodBuilder.addStatement("$T expected = $L", returnType,
                                         ArgMap.getSymbolicName(MethodType.CTOR, i));
                                 break;
@@ -313,7 +313,7 @@ public class JUnitTestGenerator {
                     }
                     for (int i = 0; i < args.length; i++) {
                         if (args[i] == retval) {
-                            isReference = true;
+                            isReferenceToInputParam = true;
                             // Retval is a reference to argument i
                             methodBuilder.addStatement("$T expected = $L", returnType,
                                     ArgMap.getSymbolicName(MethodType.METHOD, i));
@@ -323,7 +323,7 @@ public class JUnitTestGenerator {
                 }
 
                 // If not a reference, create a new value for the retval
-                if (!isReference) {
+                if (!isReferenceToInputParam) {
                     if (isPrimitive(retval) || isArray) {
                         methodBuilder.addStatement("$T expected = $L", returnType,
                                 JavaLiteralFormatter.valueToString(retval));
@@ -621,6 +621,20 @@ public class JUnitTestGenerator {
             }
         }
     }
+    
+    /**
+     * Return all the declared fields of the class C, plus the declared
+     * fields of all its superclass except the class Object.
+     */
+    private List<Field> getFieldsAndSuperClassFields(Class<?> C) {
+    	List<Field> fields = new LinkedList<>() ;
+    	Class<?> D = C ;
+    	while (D != Object.class) {
+    	   fields.addAll(Arrays.stream(D.getDeclaredFields()).toList()) ;
+    	   D = D.getSuperclass() ;
+    	}
+    	return fields ;
+    }
 
     /**
      * Builds an object instance for the given arbitrary Java object by setting the
@@ -636,7 +650,10 @@ public class JUnitTestGenerator {
             return;
         }
 
-        Field[] fields = clazz.getDeclaredFields();
+        // WP: this does not include fields of the superclass, fixing is to
+        // include:
+        // Field[] fields = clazz.getDeclaredFields();
+        List<Field> fields = getFieldsAndSuperClassFields(clazz) ;
         buildObjectInstance(methodBuilder, var, clazz);
         for (Field field : fields) {
             field.setAccessible(true);

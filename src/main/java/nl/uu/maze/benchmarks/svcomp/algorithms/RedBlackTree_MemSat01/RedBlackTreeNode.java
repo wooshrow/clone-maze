@@ -16,6 +16,8 @@
 
 package nl.uu.maze.benchmarks.svcomp.algorithms.RedBlackTree_MemSat01;
 
+import cobabench.svcomp.algorithms.RedBlackTree_MemSat01.RedBlackTreeNode;
+
 /**
  * A <code>RedBlackTree</code> object is a Red-Black tree.
  *
@@ -153,13 +155,21 @@ public class RedBlackTreeNode extends Node {
 		return o1.equals(o2) ;
 	}
 	
+	/**
+	 * WP: adding equals.
+	 * 
+	 * Define key-based equalities: two RB trees are equal if they have the
+	 * same shape, coloring, and keys. In particular, this does not compare
+	 * the data held at each node.
+	 */
 	@Override
 	public boolean equals(Object o) {
 		if (o==null || ! (o instanceof RedBlackTreeNode)) 
 			return false ;
 		RedBlackTreeNode o_ = (RedBlackTreeNode) o ;
 		if ( equalz(this.color,    o_.color) 
-			 && equalz(this.data,  o_.data) 
+			 //&& equalz(this.data,  o_.data) 
+			 && equalz(this.key,  o_.key) 
 			 && equalz(this.left,  o_.left)
 			 && equalz(this.right, o_.right)
 			 ) 
