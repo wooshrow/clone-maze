@@ -72,8 +72,12 @@ public class SymbolicExecutor {
         }
 
         try {
-            if (trackCoverage)
-                state.recordCoverage();
+        	
+        	
+        	// coba: track-cov turning this on temporarily
+            //if (trackCoverage)
+            //    state.recordCoverage();
+            state.recordCoverage();
             switch (stmt) {
                 case JIfStmt jIfStmt -> {
                     return handleIfStmt(jIfStmt, state, replay);

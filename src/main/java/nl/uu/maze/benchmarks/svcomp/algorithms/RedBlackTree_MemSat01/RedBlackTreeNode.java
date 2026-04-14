@@ -16,8 +16,6 @@
 
 package nl.uu.maze.benchmarks.svcomp.algorithms.RedBlackTree_MemSat01;
 
-import cobabench.svcomp.algorithms.RedBlackTree_MemSat01.RedBlackTreeNode;
-
 /**
  * A <code>RedBlackTree</code> object is a Red-Black tree.
  *

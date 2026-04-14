@@ -163,6 +163,9 @@ public class DSEController {
             } else {
                 nonStaticMuts.add(method);
             }
+            
+            //System.out.println(">>> " + method.getName() +  ", #stmts:" + method.getBody().getStmts().size()) ;
+            
         }
 
         if (staticMuts.isEmpty() && nonStaticMuts.isEmpty()) {
@@ -186,6 +189,8 @@ public class DSEController {
             ctorCfg = analyzer.getCFG(ctorSoot);
             initStates = new HashMap<>();
             logger.info("Using constructor: {}", ctorSoot.getSignature());
+            //System.out.println(">>> " + ctorSoot.getName() +  ", #stmts:" + ctorSoot.getBody().getStmts().size()) ;
+
         }
 
         logger.info("Running {} DSE on class: {}", concreteDriven ? "concrete-driven" : "symbolic-driven",
@@ -201,6 +206,7 @@ public class DSEController {
         try {
             run();
         } finally {
+        	//System.out.println(">>> #covered stmts:" + CoverageTracker.getInstance().getNumberOfCoveredStmts()) ;
             generator.writeToFile(outPath); 
             logger.info("#generated test-cases: {}", generator.getNumberOfGeneratedTestCases()) ;
             if (generator.getNumberOfViolationFound() > 0) {

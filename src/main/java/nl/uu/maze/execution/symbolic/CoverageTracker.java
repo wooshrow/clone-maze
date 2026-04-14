@@ -43,6 +43,10 @@ public class CoverageTracker {
     public boolean isCovered(Stmt stmt) {
         return coveredStmts.contains(stmt);
     }
+    
+    public int getNumberOfCoveredStmts() {
+    	return coveredStmts.size() ;
+    }
 
     /**
      * Resets the coverage tracker.
