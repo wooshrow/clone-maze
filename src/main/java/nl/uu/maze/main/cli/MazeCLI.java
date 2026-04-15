@@ -83,6 +83,9 @@ public class MazeCLI implements Callable<Integer> {
             "--concrete-driven" }, description = "Use concrete-driven DSE instead of symbolic-driven DSE (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean concreteDriven;
     
+    @Option(names = { "--random-seeding" }, description = "When true: use random values to for unconstrained constructor/method parameters in concrete-driven DSE (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
+    private boolean useRandomSeeding;
+    
     @Option(names = { "--constrain-FP-params-to-normal-numbers" }, description = "When true will constrain the symbolic solver to generate normal numbers for floating-point-like methods parameters (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean constrainFPNumberParametersToNormalNumbers ;
     
@@ -107,6 +110,7 @@ public class MazeCLI implements Callable<Integer> {
             
             // first copy options that need to be inspected during DSE runs to a dedicated configuration
             // info (acting like global vars).
+            EngineConfiguration.getInstance().randomSeedingInConcreteDriven = this.useRandomSeeding ;
             EngineConfiguration.getInstance().constrainFPNumberParametersToNormalNumbers = this.constrainFPNumberParametersToNormalNumbers ;
             EngineConfiguration.getInstance().surpressRegressionOracles = this.surpressRegressionOracles ;
             EngineConfiguration.getInstance().propagateUnexpectedExceptions = this.propagateUnexpectedExceptions ;

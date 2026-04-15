@@ -21,7 +21,7 @@ public class CobaConcreteDriven {
 		//String CUT = "cobabench.FloatStatisticsX" ;
 		//String CUT = "cobabench.SinglyLinkedListX" ;
 		
-		//String CUT = "cobabench.TriangleClassifier3" ;
+		String CUT = "cobabench.TriangleClassifier3" ;
 		//String CUT = "cobabench.CobaBranches" ;
 		
 		// maze bm classes:
@@ -44,7 +44,7 @@ public class CobaConcreteDriven {
 		//String CUT = "cobabench.mazebm.NestedLoops" ;
 		//String CUT = "cobabench.mazebm.QuickSort" ;
 		//String CUT = "cobabench.mazebm.StringPatternMatcher" ;
-		String CUT = "cobabench.mazebm.SinglyLinkedList" ;
+		//String CUT = "cobabench.mazebm.SinglyLinkedList" ;
 
 		
 		String sp = " " ;
@@ -56,6 +56,7 @@ public class CobaConcreteDriven {
 				      //+ sp + "-s=RPS -u=UH " 
 				      + sp + "-s=BFS"
 				      + sp + "--concrete-driven=true"
+				      + sp + "--random-seeding"
 				      + sp + "-b=60"
 				      //+ sp + "--max-depth=50"
 				      + sp + "--constrain-FP-params-to-normal-numbers=true"

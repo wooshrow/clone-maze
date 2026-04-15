@@ -1,5 +1,7 @@
 package nl.uu.maze.execution;
 
+import java.util.Random;
+
 import picocli.CommandLine.Option;
 
 /**
@@ -48,6 +50,36 @@ public class EngineConfiguration {
      * <p>Default: false.
      */
     public boolean enableDivisionByZeroChecking = false ;
+    
+    /**
+     * When true, MAZE will generate random values for parameters of the constructor
+     * and method under tests. This is only applicable in the test generation through
+     * concrete-driven symbolic execution, where some parameters may be left unconstrained
+     * by the symbolic constrain solving part.
+     * 
+     * <p>Default: false. In which case unconstrained parameters are always instantiated
+     * to their default value. E.g. int-type parameter to 0. 
+     * 
+     */
+    public boolean randomSeedingInConcreteDriven = false ;
+    
+    /**
+     * Global random seed. All random generators in MAZE should use this seed, if it is not
+     * null.
+     * <p>Default: null.
+     */
+    public Long globalRandomSeed = null ;
+    
+    /**
+     * Get a fresh random generator, using {@link #globalRandomSeed} as the seed, if it is
+     * defined. Else unseeded random generator is returned.
+     */
+    public Random getRandomGenerator() {
+    	if (globalRandomSeed == null)
+    		return new Random() ;
+    	else 
+    		return new Random(globalRandomSeed) ;
+    }
 	
 	private EngineConfiguration() {
 		

@@ -163,9 +163,11 @@ public class DSEController {
             } else {
                 nonStaticMuts.add(method);
             }
-            
+            CoverageTracker.getInstance().addTargets(method.getBody().getStmts()) ;
             //System.out.println(">>> " + method.getName() +  ", #stmts:" + method.getBody().getStmts().size()) ;
-            
+            //for (var stmt : method.getBody().getStmts()) {
+            //	System.out.println("       " + stmt.toString()) ;
+            //}
         }
 
         if (staticMuts.isEmpty() && nonStaticMuts.isEmpty()) {
@@ -189,8 +191,6 @@ public class DSEController {
             ctorCfg = analyzer.getCFG(ctorSoot);
             initStates = new HashMap<>();
             logger.info("Using constructor: {}", ctorSoot.getSignature());
-            //System.out.println(">>> " + ctorSoot.getName() +  ", #stmts:" + ctorSoot.getBody().getStmts().size()) ;
-
         }
 
         logger.info("Running {} DSE on class: {}", concreteDriven ? "concrete-driven" : "symbolic-driven",
@@ -206,7 +206,8 @@ public class DSEController {
         try {
             run();
         } finally {
-        	//System.out.println(">>> #covered stmts:" + CoverageTracker.getInstance().getNumberOfCoveredStmts()) ;
+        	System.out.println(">>> #target stmts     :" + CoverageTracker.getInstance().getNumberOfTargetStmtsToCover()) ;
+        	System.out.println(">>> #uncovered targets:" + CoverageTracker.getInstance().getNumberOfStillUnCoveredTargetStmts()) ;
             generator.writeToFile(outPath); 
             logger.info("#generated test-cases: {}", generator.getNumberOfGeneratedTestCases()) ;
             if (generator.getNumberOfViolationFound() > 0) {
@@ -345,6 +346,7 @@ public class DSEController {
             JavaSootMethod targetMethod) {
         SymbolicState current;
         while ((current = searchStrategy.next()) != null) {
+        	
             // Check if we are over the time budget
             if (System.currentTimeMillis() >= executionDeadline) {
                 if (concreteDriven) {
@@ -378,7 +380,8 @@ public class DSEController {
 
             // Symbolically execute the statement of the current symbolic state
             List<SymbolicState> newStates = symbolic.step(current, concreteDriven);
-
+            
+ 
             // For ctor states, check for final states from which we can switch to the
             // target method(s)
             if (current.isCtorState()) {
@@ -408,7 +411,6 @@ public class DSEController {
                         else {
                             for (int i = 0; i < nonStaticMuts.size(); i++) {
                                 JavaSootMethod target = nonStaticMuts.get(i);
-                                
                                 target.getExceptionSignatures() ;
                                 // Clone state, except for the last one
                                 SymbolicState newState = i == nonStaticMuts.size() - 1 ? state : state.clone();
@@ -425,7 +427,7 @@ public class DSEController {
             }
             // For non-ctor states, we can simply add the new states to the search strategy
             else {
-                searchStrategy.add(newStates);
+            	searchStrategy.add(newStates);
             }
         }
 
@@ -477,6 +479,7 @@ public class DSEController {
 
             // Concrete execution followed by symbolic replay
             TraceManager.clearEntries();
+            //System.out.println(">>> concrete exec " + javaMethod.getName() + ": " + argMap.getArgsNames()) ;
             concrete.execute(ctor, javaMethod, argMap);
             Optional<SymbolicState> finalState = runSymbolicReplay(method);
             logger.debug("Replayed state: {}", finalState.isPresent() ? finalState.get() : "none");
@@ -507,6 +510,7 @@ public class DSEController {
             // arguments which will be used in the next iteration for concrete execution
             Pair<Model, SymbolicState> pair = candidate.get();
             argMap = validator.evaluate(pair.getFirst(), pair.getSecond().returnToRootCaller(), false);
+            
         }
     }
 }

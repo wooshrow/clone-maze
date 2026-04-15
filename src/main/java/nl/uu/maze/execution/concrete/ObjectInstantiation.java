@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import nl.uu.maze.analysis.JavaAnalyzer;
 import nl.uu.maze.execution.ArgMap;
+import nl.uu.maze.execution.EngineConfiguration;
 import nl.uu.maze.execution.MethodType;
 
 /**
@@ -20,8 +21,7 @@ import nl.uu.maze.execution.MethodType;
 public class ObjectInstantiation {
     private static final Logger logger = LoggerFactory.getLogger(ObjectInstantiation.class);
 
-    private static final Random rand = new Random();
-
+    private static final Random rand = EngineConfiguration.getInstance().getRandomGenerator() ;
     /**
      * Attempt to create an instance of the given class.
      * 
@@ -120,8 +120,16 @@ public class ObjectInstantiation {
                 continue;
             }
 
-            // Get a default value for the parameter type
-            arguments[i] = getDefault(params[i].getType());
+            // param-i does not appear in the argMap, so it is unconstrained.
+            // Either use a random value, or use a default value depending on the setting:
+            if (EngineConfiguration.getInstance().randomSeedingInConcreteDriven) {
+            	arguments[i] = generateRandom(params[i].getType());
+            }
+            else {
+            	// Get a default value for the parameter type
+                arguments[i] = getDefault(params[i].getType());
+            }            
+            System.out.println(">>>> gen using default val " + methodType + ", " + params[i].getName() + "-->" + arguments[i]) ;
 
             // Add new argument to argMap
             if (argMap != null) {
@@ -162,7 +170,7 @@ public class ObjectInstantiation {
      * @param type The java class of the value to generate
      * @return A random value or default of the given type
      */
-    @SuppressWarnings("unused")
+    //@SuppressWarnings("unused")
     private static Object generateRandom(Class<?> type) {
         return switch (type.getName()) {
             case "int" -> rand.nextInt(Integer.MIN_VALUE, Integer.MAX_VALUE);

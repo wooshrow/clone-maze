@@ -5,6 +5,7 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -103,6 +104,10 @@ public class ArgMap {
         return type.getPrefix() + "arg" + index;
     }
 
+    public Set<String> getArgsNames() {
+    	return args.keySet() ;
+    }
+    
     @Override
     public String toString() {
         return args.toString();
