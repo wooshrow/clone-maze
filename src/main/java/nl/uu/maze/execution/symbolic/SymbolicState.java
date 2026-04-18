@@ -3,6 +3,7 @@ package nl.uu.maze.execution.symbolic;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -51,7 +52,7 @@ public class SymbolicState implements SearchTarget {
     private Stmt prevStmt = null;
     private int depth = 0;
     private MethodType methodType = MethodType.CTOR;
-
+    
     /** Mapping from variable names to symbolic expressions. */
     public final Map<String, Expr<?>> store;
     /** Symbolic heap to store symbolic objects and arrays. */
@@ -86,7 +87,7 @@ public class SymbolicState implements SearchTarget {
      * statement and the index of the branch that was taken) were taken along the
      * path leading to this state.
      */
-    private final List<Integer> branchHistory;
+    private final BranchHistory branchHistory;
     /**
      * The iteration at which this state was added to the search strategy.
      */
@@ -120,7 +121,8 @@ public class SymbolicState implements SearchTarget {
         this.engineConstraints = new ArrayList<>();
         this.paramTypes = new HashMap<>();
         this.newCoverageDepths = new ArrayList<>();
-        this.branchHistory = new ArrayList<>();
+        this.branchHistory = new BranchHistory() ;
+        this.branchHistory.addMethodEntry(method);
     }
 
     /*
@@ -146,7 +148,7 @@ public class SymbolicState implements SearchTarget {
         // original here
         this.caller = state.caller;
         this.newCoverageDepths = new ArrayList<>(state.newCoverageDepths);
-        this.branchHistory = new ArrayList<>(state.branchHistory);
+        this.branchHistory = new BranchHistory(state.branchHistory);
 
         this.isCtorState = state.isCtorState;
         this.isFinalState = state.isFinalState;
@@ -190,6 +192,9 @@ public class SymbolicState implements SearchTarget {
         this.method = method;
         this.cfg = cfg;
         setStmt(cfg.getStartingStmt());
+        // setMethod means switching from constructor exec to method exec, we record
+        // entering the method:
+        branchHistory.addMethodEntry(method);
     }
 
     public StmtGraph<?> getCFG() {
@@ -360,11 +365,11 @@ public class SymbolicState implements SearchTarget {
     /**
      * Record the coverage of the current statement in the coverage tracker.
      * If new coverage is found, add the current depth to the list of new coverage
-     * depths.
+     * depths. This is used to record exploration-time stmt-coverage.
      */
-    public void recordCoverage() {
+    public void recordStmtCoverageByExpl() {
         if (!exceptionThrown) {
-            boolean newCoverage = coverageTracker.setCovered(this,stmt);
+            boolean newCoverage = coverageTracker.registerStmtCovered_byExpl(this,stmt);
             if (newCoverage) {
                 newCoverageDepths.add(depth);
             }
@@ -379,15 +384,28 @@ public class SymbolicState implements SearchTarget {
      */
     public void recordBranch(Stmt branchStmt, int branchIndex) {
         int hash = branchStmt.hashCode() + 31 * branchIndex;
-        branchHistory.add(hash);
+        branchHistory.addBranch(hash); 
     }
 
     public List<Integer> getNewCoverageDepths() {
         return newCoverageDepths;
     }
 
+    /**
+     * Get the history of passed branches, leading to this state. Each branch is
+     * represented by its hash value.
+     */
     public List<Integer> getBranchHistory() {
-        return branchHistory;
+        return branchHistory.getBranchHistory();
+    }
+    
+    /**
+     * Get the history of passed branches, leading to this state. The history is
+     * represented as the underlying instance of BranchHistory, which contains
+     * a bit more information than just a list of branch-hashes.
+     */
+    public BranchHistory getBranchHistory2() {
+    	return branchHistory ;
     }
 
     public void setIteration(int iteration) {

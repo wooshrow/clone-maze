@@ -129,7 +129,7 @@ public class ObjectInstantiation {
             	// Get a default value for the parameter type
                 arguments[i] = getDefault(params[i].getType());
             }            
-            System.out.println(">>>> gen using default val " + methodType + ", " + params[i].getName() + "-->" + arguments[i]) ;
+            //System.out.println(">>>> gen using default val " + methodType + ", " + params[i].getName() + "-->" + arguments[i]) ;
 
             // Add new argument to argMap
             if (argMap != null) {

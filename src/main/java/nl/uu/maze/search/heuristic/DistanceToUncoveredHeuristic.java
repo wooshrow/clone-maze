@@ -94,7 +94,7 @@ public class DistanceToUncoveredHeuristic extends SearchHeuristic {
             // If we reach an uncovered statement, return the distance
             // Because the worklist is FIFO, the first uncovered statement we reach is the
             // closest one
-            if (!coverageTracker.isCovered(item.stmt)) {
+            if (!coverageTracker.isStmtCovered_byExpl(item.stmt)) {
                 return item.dist;
             }
 

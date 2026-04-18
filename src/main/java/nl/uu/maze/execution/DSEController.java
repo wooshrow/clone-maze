@@ -31,6 +31,7 @@ import nl.uu.maze.search.strategy.ConcreteSearchStrategy;
 import nl.uu.maze.search.strategy.DFS;
 import nl.uu.maze.search.strategy.SearchStrategy;
 import nl.uu.maze.search.strategy.SymbolicSearchStrategy;
+import nl.uu.maze.util.BranchHistoryUtil;
 import nl.uu.maze.util.Pair;
 import sootup.core.graph.StmtGraph;
 import sootup.java.core.JavaSootClass;
@@ -119,8 +120,16 @@ public class DSEController {
 
         this.concrete = new ConcreteExecutor();
         this.validator = new SymbolicStateValidator();
-        this.symbolic = new SymbolicExecutor(concrete, validator, analyzer, searchStrategy.requiresCoverageData(),
-                searchStrategy.requiresBranchHistoryData());
+        
+        // we will let coverage and branch-history tracking to be always on:
+        // boolean turnOnCoverageTracking = searchStrategy.requiresCoverageData() ;
+        // boolean turnOnbranchHistoryTracking = searchStrategy.requiresBranchHistoryData() ;
+        boolean turnOnCoverageTracking = true ;
+        boolean turnOnbranchHistoryTracking = true ;
+        this.symbolic = new SymbolicExecutor(concrete, validator, analyzer, 
+        		turnOnCoverageTracking,
+        		turnOnbranchHistoryTracking);
+        
         this.generator = new JUnitTestGenerator(targetJUnit4, analyzer, concrete, testTimeout, packageName);
     }
 
@@ -147,7 +156,7 @@ public class DSEController {
         this.clazz = analyzer.getJavaClass(classType);
         generator.initializeForClass(clazz);
 
-        Set<JavaSootMethod> methods = sootClass.getMethods();
+        Set<JavaSootMethod> methods = sootClass.getMethods(); 
 
         // Organize mehtods under test into static and non-static, and filter out any
         // non-standard methods
@@ -163,11 +172,7 @@ public class DSEController {
             } else {
                 nonStaticMuts.add(method);
             }
-            CoverageTracker.getInstance().addTargets(method.getBody().getStmts()) ;
-            //System.out.println(">>> " + method.getName() +  ", #stmts:" + method.getBody().getStmts().size()) ;
-            //for (var stmt : method.getBody().getStmts()) {
-            //	System.out.println("       " + stmt.toString()) ;
-            //}
+            CoverageTracker.getInstance().addTargets(method) ;
         }
 
         if (staticMuts.isEmpty() && nonStaticMuts.isEmpty()) {
@@ -190,6 +195,7 @@ public class DSEController {
             ctorSoot = analyzer.getSootConstructor(methods, ctor);
             ctorCfg = analyzer.getCFG(ctorSoot);
             initStates = new HashMap<>();
+            CoverageTracker.getInstance().addTargets(ctorSoot) ;
             logger.info("Using constructor: {}", ctorSoot.getSignature());
         }
 
@@ -206,9 +212,13 @@ public class DSEController {
         try {
             run();
         } finally {
-        	System.out.println(">>> #target stmts     :" + CoverageTracker.getInstance().getNumberOfTargetStmtsToCover()) ;
-        	System.out.println(">>> #uncovered targets:" + CoverageTracker.getInstance().getNumberOfStillUnCoveredTargetStmts()) ;
-            generator.writeToFile(outPath); 
+        	int stmtTargets = CoverageTracker.getInstance().numberOfTargetStmts() ;
+        	int stmtCovered = stmtTargets - CoverageTracker.getInstance().numberOfStillUnCoveredStmts() ;
+        	int branchTargets = CoverageTracker.getInstance().numberOfTargetBranches() ;
+        	int branchCovered = branchTargets - CoverageTracker.getInstance().numberOfStillUnCoveredBranches() ;
+        	logger.info("statement-converage (by test): " + stmtCovered + "/" + stmtTargets) ;
+        	logger.info("branch-converage    (by test): " + branchCovered + "/" + branchTargets) ;
+        	generator.writeToFile(outPath); 
             logger.info("#generated test-cases: {}", generator.getNumberOfGeneratedTestCases()) ;
             if (generator.getNumberOfViolationFound() > 0) {
             	logger.info("There were {} test/s that threw an unexpected exception. They may be errors.",  generator.getNumberOfViolationFound()) ;
@@ -292,7 +302,9 @@ public class DSEController {
                     break;
                 }
                 if (!state.isInfeasible()) {
-                    generateTestCase(state.returnToRootCaller());
+                	var callerState = state.returnToRootCaller() ;
+                    generateTestCase(callerState);
+                    CoverageTracker.getInstance().registerPathCoveredByTesting(callerState) ;
                 }
             }
         }
@@ -320,7 +332,8 @@ public class DSEController {
         // If methods under test include non-static methods, need to execute constructor
         // as well
         if (!nonStaticMuts.isEmpty()) {
-            searchStrategy.add(new SymbolicState(ctorSoot, ctorCfg));
+        	SymbolicState state = new SymbolicState(ctorSoot, ctorCfg) ;
+            searchStrategy.add(state);
         }
 
         // For static methods, we can start directly with the target method
@@ -331,6 +344,7 @@ public class DSEController {
             searchStrategy.add(state);
         }
     }
+    
 
     /**
      * Run symbolic-driven DSE on the given method.
@@ -373,7 +387,9 @@ public class DSEController {
                     return Optional.of(current);
                 } else if (!current.isInfeasible()) {
                     // For symblic-driven, generate test case
-                    generateTestCase(current.returnToRootCaller());
+                	var rootCallerState = current.returnToRootCaller() ;
+                    generateTestCase(rootCallerState);
+                    CoverageTracker.getInstance().registerPathCoveredByTesting(rootCallerState) ;
                 }
                 continue;
             }
@@ -394,6 +410,7 @@ public class DSEController {
                                 return Optional.of(state);
                             } else if (!clazz.isEnum() && !state.isInfeasible()) {
                                 generateTestCase(state);
+                                CoverageTracker.getInstance().registerPathCoveredByTesting(state) ;
                             }
                             continue;
                         }
@@ -433,6 +450,7 @@ public class DSEController {
 
         return Optional.empty();
     }
+
 
     /** Run symbolic-driven DSE to replay a concrete execution. */
     public Optional<SymbolicState> runSymbolicReplay(JavaSootMethod method) {
