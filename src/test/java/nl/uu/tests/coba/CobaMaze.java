@@ -21,7 +21,9 @@ public class CobaMaze {
 		//String CUT = "cobabench.CobaUnexpectedExceptionDetection" ;
 		//String CUT = "cobabench.TriangleClassifier3" ;
 		//String CUT = "cobabench.CobaBranches" ;
-		String CUT = "cobabench.CobaSimple" ;
+		//String CUT = "cobabench.CobaSimple" ;
+		//String CUT = "cobabench.CobaNullDeref" ;
+		//String CUT = "cobabench.CobaVarDefaultInit" ;
 		
 		// classes from Maze-bm:
 		//String CUT = "cobabench.mazebm.TriangleClassifier" ;
@@ -43,7 +45,7 @@ public class CobaMaze {
 		//String CUT = "cobabench.mazebm.NestedLoops" ;
 		//String CUT = "cobabench.mazebm.QuickSort" ;
 		//String CUT = "cobabench.mazebm.StringPatternMatcher" ;
-		//String CUT = "cobabench.mazebm.SinglyLinkedList" ;
+		String CUT = "cobabench.mazebm.SinglyLinkedList" ;
 		
 			
 		String sp = " " ;
@@ -53,8 +55,9 @@ public class CobaMaze {
 				      + sp + "--output-path=" + cobabenchPath + "/src/test/java/"
 				      // + sp + "-j=JUnit4"
 				      //+ sp + "-s=RPS -u=UH " 
-				      //+ sp + "-m=foo"
+				      + sp + "-m=add"
 				      + sp + "-s=BFS"
+				      + sp + "--minimalistic-suite=true"
 				      + sp + "-b=60"
 				      //+ sp + "--max-depth=40"
 				      + sp + "--constrain-FP-params-to-normal-numbers=true"

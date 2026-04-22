@@ -266,6 +266,9 @@ public class Z3Sorts {
     public Expr<?> getDefaultValue(Type sootType) {
         if (Type.isIntLikeType(sootType)) {
             return ctx().mkBV(0, getBitSize(sootType));
+        } else if (sootType instanceof LongType) {
+        	// WP: adding def. val for long:
+        	return ctx().mkBV(0L, getLongBitSize()) ; 
         } else if (sootType instanceof FloatType) {
             return ctx().mkFP(0.0f, getFloatSort());
         } else if (sootType instanceof DoubleType) {

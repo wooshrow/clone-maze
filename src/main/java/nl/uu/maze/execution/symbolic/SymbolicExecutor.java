@@ -15,7 +15,6 @@ import nl.uu.maze.execution.concrete.ConcreteExecutor;
 import nl.uu.maze.execution.symbolic.PathConstraint.*;
 import nl.uu.maze.instrument.TraceManager;
 import nl.uu.maze.instrument.TraceManager.TraceEntry;
-import nl.uu.maze.main.cli.MazeCLI;
 import nl.uu.maze.transform.JimpleToZ3Transformer;
 import nl.uu.maze.util.*;
 import sootup.core.jimple.basic.*;
@@ -27,6 +26,8 @@ import sootup.core.jimple.common.ref.*;
 import sootup.core.jimple.common.stmt.*;
 import sootup.core.jimple.javabytecode.stmt.JSwitchStmt;
 import sootup.core.types.Type;
+import sootup.java.core.JavaSootClass;
+import sootup.java.core.types.JavaClassType;
 
 /**
  * Provides symbolic execution capabilities.
@@ -34,18 +35,19 @@ import sootup.core.types.Type;
 public class SymbolicExecutor {
     private static final Logger logger = LoggerFactory.getLogger(SymbolicExecutor.class);
     private static final Z3Sorts sorts = Z3Sorts.getInstance();
-    private static final Context ctx() { return Z3ContextProvider.getContext() ; }
-
+    private static final Context ctx() { return Z3ContextProvider.getContext() ; }    
     private final MethodInvoker methodInvoker;
     private final SymbolicStateValidator validator;
     private final JimpleToZ3Transformer jimpleToZ3 = new JimpleToZ3Transformer();
     private final boolean trackCoverage;
     private final boolean trackBranchHistory;
+    private JavaAnalyzer analyzer ;
 
     public SymbolicExecutor(ConcreteExecutor executor, SymbolicStateValidator validator,
             JavaAnalyzer analyzer, boolean trackCoverage, boolean trackBranchHistory) {
         this.methodInvoker = new MethodInvoker(executor, validator, analyzer);
         this.validator = validator;
+        this.analyzer = analyzer ;
         this.trackCoverage = trackCoverage;
         this.trackBranchHistory = trackBranchHistory;
     }
@@ -108,6 +110,33 @@ public class SymbolicExecutor {
             state.setExceptionThrown();
             return List.of(state);
         }
+    }
+    
+    void handleFieldsInitializationAtConstructor(AbstractDefinitionStmt stmt, SymbolicState state, boolean replay) {
+    	if (stmt == state.getCFG().getStartingStmt() && state.getMethod().getName().equals("<init>")) {
+    		try {
+    			JavaClassType classType = analyzer.getClassType(state.getMethod().getDeclaringClassType().getFullyQualifiedName());
+    	        JavaSootClass sootClass = analyzer.getSootClass(classType);
+    	        var fields = sootClass.getFields() ;
+    	        String thisStr = "this" ;
+    	        for (var f : fields) {
+    	        	String fname  = f.getName() ;
+    	            Type fty  = f.getType() ;
+    	            try {
+    	               Expr<?> defaultValue = sorts.getDefaultValue(fty) ;
+    	               state.heap.setField(thisStr, fname, defaultValue,fty);
+    	        	   System.out.println("--> initializing field this." + fname + "/" + fty + "=" + defaultValue) ;
+    	            }
+    	            catch(Exception e) {
+    	    			logger.error("Failed to default-initialize field " + fname + " as we enter a constructor of " + sootClass.getName()) ;
+
+    	            }
+        		}
+    		}
+    		catch (ClassNotFoundException e) {
+    			logger.error("Class not found: " + state.getMethod().getDeclaringClassType().getFullyQualifiedName()) ;
+    		}
+    	}
     }
 
     /**
@@ -245,10 +274,11 @@ public class SymbolicExecutor {
      *         statement
      */
     private List<SymbolicState> handleDefStmt(AbstractDefinitionStmt stmt, SymbolicState state, boolean replay) {
-        LValue leftOp = stmt.getLeftOp();
+       
+    	LValue leftOp = stmt.getLeftOp();
         Value rightOp = stmt.getRightOp();
         List<SymbolicState> newStates = new ArrayList<>();
-
+        
         Expr<?> value;
         if (stmt.containsInvokeExpr()) {
             // If this is an invocation, first check if a return value is already available
@@ -276,7 +306,7 @@ public class SymbolicExecutor {
         } else {
             value = jimpleToZ3.transform(rightOp, state, leftOp.toString());
         }
-
+        
         // For array access on symbolic arrays (i.e., parameters), we split the state
         // into one where the index is outside the bounds of the array (throws
         // exception) and one where it is not
@@ -397,11 +427,19 @@ public class SymbolicExecutor {
             case JStaticFieldRef ignored -> {
                 // Static field assignments are considered out of scope
             }
-            case JInstanceFieldRef ref ->
-                state.heap.setField(ref.getBase().getName(), ref.getFieldSignature().getName(), value,
+            case JInstanceFieldRef ref -> {
+            	//System.out.println("----> " + ref.getBase().getName() 
+            	//		+ "/" + ref.getFieldSignature().getName() + "/" + ref.getFieldSignature().getType() + ", val=" + value) ;
+            	state.heap.setField(ref.getBase().getName(), ref.getFieldSignature().getName(), value,
                         ref.getFieldSignature().getType());
-            default -> state.assign(leftOp.toString(), value);
+            }
+            default -> {
+            	//System.out.println("-x--> " + leftOp.toString() + ", val=" + value) ;
+            	state.assign(leftOp.toString(), value);
+            	handleFieldsInitializationAtConstructor(stmt,state,replay) ;
+            }
         }
+    	
 
         // Special handling of parameters for reference types when replaying a trace
         if (replay && rightOp instanceof JParameterRef && sorts.isRef(value)) {

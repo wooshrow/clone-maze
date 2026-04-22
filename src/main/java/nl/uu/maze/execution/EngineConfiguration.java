@@ -71,6 +71,16 @@ public class EngineConfiguration {
     public Long globalRandomSeed = null ;
     
     /**
+     * Normally MAZE will explore all possible execution paths (within the given depth bounding).
+     * However, if this flag is true, only tests that contribute to new coverage will be generated.
+     * A test generates "new coverage" if the test executes a statement/instruction or a branch
+     * that was not executed by all the tests before it. Only coverage over target methods is counted.
+     * E.g. coverage over private methods is not counted.
+     * <p>Default: false.
+     */
+    public boolean minimalisticTestSuite = false ;
+    
+    /**
      * Get a fresh random generator, using {@link #globalRandomSeed} as the seed, if it is
      * defined. Else unseeded random generator is returned.
      */

@@ -369,11 +369,13 @@ public class JUnitTestGenerator {
             return;
         }
         builtTestCases.add(hash);
-
-        methodBuilder.setName(createTestName(method.getName()));
+        
+        String testcaseName = createTestName(method.getName()) ;
+        System.out.println("    " + testcaseName) ;
+        methodBuilder.setName(testcaseName);
         classBuilder.addMethod(methodBuilder.build());
     }
-    
+        
     /**
      * Build a statement, or add the statement as a comment.
      */

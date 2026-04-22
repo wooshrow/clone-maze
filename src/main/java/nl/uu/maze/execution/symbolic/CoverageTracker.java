@@ -94,11 +94,12 @@ public class CoverageTracker {
     		}
     	}
     	
+    	System.out.println(method.getSignature());
+	    System.out.println(method.getBody());
     	System.out.println(">>> " + method.getName() +  ", #stmts:" + method.getBody().getStmts().size()) ;
         for (var stmt : method.getBody().getStmts()) {
         	System.out.println("       " + stmt.toString()) ;
         }
-    	
     	//System.out.println(">>> " + method.getName() + " branches " + targetStmts.size() + " : " + stillOpenBranchTargets) ;
     	
     }
@@ -137,24 +138,16 @@ public class CoverageTracker {
      * of branch). 
      */
     public boolean registerPathCoveredByTesting(SymbolicState endstate) {
-    	boolean hasNewCoverage = false ;
+    	boolean hasNewCoverage = false ; 
     	// register visited statements:
-		try {
-    		List<Stmt> visitedStmts = BranchHistoryUtil.getPathFromBranchHistory(
-    			endstate.getBranchHistory2(),
-    			endstate.getStmt()) ;
-    		for (Stmt S : visitedStmts) {
+		List<Stmt> visitedStmts = BranchHistoryUtil.getPathFromBranchHistory(
+				endstate.getBranchHistory2(),
+				endstate.getStmt()) ;
+		
+    	for (Stmt S : visitedStmts) {
     			//System.out.println(">>> visited " + endstate.getMethod().getName() + ": " +  S) ;
-    			boolean changed = stillOpenStmtTargets.remove(S) ;
-    			if (changed) hasNewCoverage = true ;
-    		}
-    	}
-    	catch(Exception e) {
-    		logger.error("Something went WRONG with history reconstruction: " + e) ;
-    		//System.out.println("### something WENT WRONG with history reconstruction ") ;
-    		//e.printStackTrace();
-    		// something wrong with reconstructing the stmts-history, 
-    		// should log this ...  
+    		boolean changed = stillOpenStmtTargets.remove(S) ;
+    		if (changed) hasNewCoverage = true ;
     	}
 		// register visited branches:
 		for (Integer b : endstate.getBranchHistory()) {
@@ -162,6 +155,22 @@ public class CoverageTracker {
 			boolean changed = stillOpenBranchTargets.remove(b) ;
 			if (changed) hasNewCoverage = true ;
 		}
+
+		// if the the state is exceptional, we'll consider it to produce new-coverage 
+		// (even if it does not register new stmt or branch):
+		hasNewCoverage = hasNewCoverage || endstate.isExceptionThrown() ;
+		
+		if (hasNewCoverage) {
+			System.out.println(">>> recording path: " + visitedStmts) ;
+			System.out.println("    branches-list: " + BranchHistoryUtil.getStmtStmtListOfBranches(endstate.getBranchHistory2())) ;
+			System.out.println("    path-constraints: " + endstate.getPathConstraints()) ;
+			System.out.println("    engine-constraints: " + endstate.getEngineConstraints()) ;
+		}
+		
+		//System.out.println(">>> test-path, has new coverage:" + hasNewCoverage + ", exceptional:" + endstate.isExceptionThrown()) ;
+		//System.out.println(">>> test-path: " + visitedStmts + ", has new coverage:" + hasNewCoverage + ", exceptional:" + endstate.isExceptionThrown()) ;
+		//System.out.println(">>> branch-history: " + endstate.getBranchHistory2()) ;
+		
     	return hasNewCoverage ;
     }
     

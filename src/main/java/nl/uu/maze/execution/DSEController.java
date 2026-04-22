@@ -173,6 +173,7 @@ public class DSEController {
                 nonStaticMuts.add(method);
             }
             CoverageTracker.getInstance().addTargets(method) ;
+            logger.info("Adding " + method.getName() + " as a target, #stmts:" + method.getBody().getStmts().size()) ;
         }
 
         if (staticMuts.isEmpty() && nonStaticMuts.isEmpty()) {
@@ -196,7 +197,9 @@ public class DSEController {
             ctorCfg = analyzer.getCFG(ctorSoot);
             initStates = new HashMap<>();
             CoverageTracker.getInstance().addTargets(ctorSoot) ;
-            logger.info("Using constructor: {}", ctorSoot.getSignature());
+            logger.info("Using constructor: {}, #stmts:{}", 
+            		ctorSoot.getSignature(),
+            		ctorSoot.getBody().getStmts().size());
         }
 
         logger.info("Running {} DSE on class: {}", concreteDriven ? "concrete-driven" : "symbolic-driven",
@@ -302,22 +305,36 @@ public class DSEController {
                     break;
                 }
                 if (!state.isInfeasible()) {
-                	var callerState = state.returnToRootCaller() ;
-                    generateTestCase(callerState);
-                    CoverageTracker.getInstance().registerPathCoveredByTesting(callerState) ;
+                	generateTestCase(state.returnToRootCaller());
                 }
             }
         }
     }
-
+    
+    int j = 0 ;
+    int k = 0 ;
+    
     /**
      * Generate a test case for the given method and symbolic state.
      */
     private void generateTestCase(SymbolicState state) {
         try {
-            Optional<ArgMap> argMap = validator.evaluate(state);
+        	System.out.println("### test " + j) ; j++ ;
+        	Optional<ArgMap> argMap = validator.evaluate(state);
             if (argMap.isPresent()) {
-                generator.addMethodTestCase(state.getMethod(), ctorSoot, argMap.get());
+            	var hasNewCov = CoverageTracker.getInstance().registerPathCoveredByTesting(state) ;
+                if (hasNewCov || ! EngineConfiguration.getInstance().minimalisticTestSuite) {
+                	System.out.println("    argmap: " + argMap.get()) ;
+                	for (var name : argMap.get().getArgsNames()) {
+                		var o = argMap.get().get(name) ;
+                		if (o != null && o.getClass().isArray()) {
+                			var o_ = (Object[]) o ;
+                    		System.out.println("    " + name + " -> " + o_.length) ; 
+                		}
+                	}
+                	generator.addMethodTestCase(state.getMethod(), ctorSoot, argMap.get());
+                	System.out.println("--- test " + k) ; k++ ;
+                }
             }
         } catch (Exception e) {
             logger.error("Error generating test case for method {}: {}", state.getMethod().getName(), e.getMessage());
@@ -361,6 +378,14 @@ public class DSEController {
         SymbolicState current;
         while ((current = searchStrategy.next()) != null) {
         	
+            // stop the search if the engine is configured to add only coverage-
+            // contributing tests, and all coverage targets are already covered.
+            if (EngineConfiguration.getInstance().minimalisticTestSuite
+            	&& CoverageTracker.getInstance().numberOfStillUnCoveredBranches() 
+            		+ CoverageTracker.getInstance().numberOfStillUnCoveredStmts() == 0) {
+            	return concreteDriven ? Optional.of(current) : Optional.empty();
+            }
+        	
             // Check if we are over the time budget
             if (System.currentTimeMillis() >= executionDeadline) {
                 if (concreteDriven) {
@@ -379,6 +404,7 @@ public class DSEController {
                 logger.info("Extending time budget for symbolic-driven execution...");
                 executionDeadline = System.currentTimeMillis() + remainingTime / 2;
             }
+            
 
             logger.debug("Current state: {}", current);
             if (!current.isCtorState() && current.isFinalState() || current.getDepth() >= maxDepth) {
@@ -387,9 +413,7 @@ public class DSEController {
                     return Optional.of(current);
                 } else if (!current.isInfeasible()) {
                     // For symblic-driven, generate test case
-                	var rootCallerState = current.returnToRootCaller() ;
-                    generateTestCase(rootCallerState);
-                    CoverageTracker.getInstance().registerPathCoveredByTesting(rootCallerState) ;
+                	generateTestCase(current.returnToRootCaller());
                 }
                 continue;
             }
@@ -410,7 +434,6 @@ public class DSEController {
                                 return Optional.of(state);
                             } else if (!clazz.isEnum() && !state.isInfeasible()) {
                                 generateTestCase(state);
-                                CoverageTracker.getInstance().registerPathCoveredByTesting(state) ;
                             }
                             continue;
                         }
@@ -507,10 +530,14 @@ public class DSEController {
                 // Only add a new test case if this path has not been explored before
                 // Note: this particular check will catch only certain edge cases that are not
                 // caught by the search strategy
+                
                 if (isNew) {
-                    // For the first concrete execution, argMap is populated by the concrete
-                    // executor
-                    generator.addMethodTestCase(method, ctorSoot, argMap);
+                	// additionally, only add if the test would give new coverage
+                    boolean hasNewCov = CoverageTracker.getInstance().registerPathCoveredByTesting(finalState.get().returnToRootCaller()) ;
+                    if (hasNewCov || ! EngineConfiguration.getInstance().minimalisticTestSuite)
+                    	// For the first concrete execution, argMap is populated by the concrete
+                    	// executor
+                    	generator.addMethodTestCase(method, ctorSoot, argMap);
                 }
             }
 

@@ -86,6 +86,9 @@ public class MazeCLI implements Callable<Integer> {
     @Option(names = { "--random-seeding" }, description = "When true: use random values to for unconstrained constructor/method parameters in concrete-driven DSE (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean useRandomSeeding;
     
+    @Option(names = { "--minimalistic-suite" }, description = "When true: only tests that add new stmt or branch coverage are generated (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
+    private boolean minimalisticTestSuite;
+
     @Option(names = { "--constrain-FP-params-to-normal-numbers" }, description = "When true will constrain the symbolic solver to generate normal numbers for floating-point-like methods parameters (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean constrainFPNumberParametersToNormalNumbers ;
     
@@ -115,6 +118,7 @@ public class MazeCLI implements Callable<Integer> {
             EngineConfiguration.getInstance().surpressRegressionOracles = this.surpressRegressionOracles ;
             EngineConfiguration.getInstance().propagateUnexpectedExceptions = this.propagateUnexpectedExceptions ;
             EngineConfiguration.getInstance().enableDivisionByZeroChecking = this.enableDivisionByZeroChecking ;
+            EngineConfiguration.getInstance().minimalisticTestSuite = this.minimalisticTestSuite ;
             
             // dealing with the rest of the options:
             
