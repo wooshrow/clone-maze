@@ -112,31 +112,30 @@ public class SymbolicExecutor {
         }
     }
     
-    void handleFieldsInitializationAtConstructor(AbstractDefinitionStmt stmt, SymbolicState state, boolean replay) {
-    	if (stmt == state.getCFG().getStartingStmt() && state.getMethod().getName().equals("<init>")) {
-    		try {
-    			JavaClassType classType = analyzer.getClassType(state.getMethod().getDeclaringClassType().getFullyQualifiedName());
-    	        JavaSootClass sootClass = analyzer.getSootClass(classType);
-    	        var fields = sootClass.getFields() ;
-    	        String thisStr = "this" ;
-    	        for (var f : fields) {
-    	        	String fname  = f.getName() ;
-    	            Type fty  = f.getType() ;
-    	            try {
-    	               Expr<?> defaultValue = sorts.getDefaultValue(fty) ;
-    	               state.heap.setField(thisStr, fname, defaultValue,fty);
-    	        	   System.out.println("--> initializing field this." + fname + "/" + fty + "=" + defaultValue) ;
-    	            }
-    	            catch(Exception e) {
-    	    			logger.error("Failed to default-initialize field " + fname + " as we enter a constructor of " + sootClass.getName()) ;
+    void handleFieldsInitializationAtConstructor(AbstractDefinitionStmt stmt, SymbolicState state) {
+    	try {
+    		JavaClassType classType = analyzer.getClassType(state.getMethod().getDeclaringClassType().getFullyQualifiedName());
+    		JavaSootClass sootClass = analyzer.getSootClass(classType);
+    		var fields = sootClass.getFields() ;
+    		String thisStr = "this" ;
+    		for (var f : fields) {
+    			String fname  = f.getName() ;
+    			Type fty  = f.getType() ;
+    			try {
+    				Expr<?> defaultValue = sorts.getDefaultValue(fty) ;
+    				state.heap.setField(thisStr, fname, defaultValue,fty);
+    				//System.out.println("--> initializing field this." + fname + "/" + fty + "=" + defaultValue) ;
+    			}
+    			catch(Exception e) {
+    				logger.error("Failed to default-initialize field " + fname + " as we enter a constructor of " + sootClass.getName()) ;
 
-    	            }
-        		}
-    		}
-    		catch (ClassNotFoundException e) {
-    			logger.error("Class not found: " + state.getMethod().getDeclaringClassType().getFullyQualifiedName()) ;
+    			}
     		}
     	}
+    	catch (ClassNotFoundException e) {
+    		logger.error("Class not found: " + state.getMethod().getDeclaringClassType().getFullyQualifiedName()) ;
+    	}
+    	
     }
 
     /**
@@ -434,9 +433,18 @@ public class SymbolicExecutor {
                         ref.getFieldSignature().getType());
             }
             default -> {
+            	// assignment of the form locvar := expr
             	//System.out.println("-x--> " + leftOp.toString() + ", val=" + value) ;
             	state.assign(leftOp.toString(), value);
-            	handleFieldsInitializationAtConstructor(stmt,state,replay) ;
+            	// Special case when the assignment is the first instruction of a constructor of a class C.
+            	// We add the default-initialization of the declared fields of C. This default initialization
+            	// do not appear as explicit instructions in the bytecode, so we need to add the corresponding
+            	// logic:
+            	if (stmt == state.getCFG().getStartingStmt() && state.getMethod().getName().equals("<init>")) {
+            		handleFieldsInitializationAtConstructor(stmt,state) ;
+            	}
+            	// we don't have to do similar default initialization for locvars, because
+            	// Java compiler rejects locvars without explicit initial values.
             }
         }
     	

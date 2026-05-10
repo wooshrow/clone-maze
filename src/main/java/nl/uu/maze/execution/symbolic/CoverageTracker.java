@@ -14,6 +14,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
+import sootup.core.graph.StmtGraph;
 import sootup.core.jimple.common.stmt.Stmt;
 import sootup.java.core.JavaSootMethod;
 
@@ -94,12 +95,14 @@ public class CoverageTracker {
     		}
     	}
     	
+    	/*
     	System.out.println(method.getSignature());
 	    System.out.println(method.getBody());
     	System.out.println(">>> " + method.getName() +  ", #stmts:" + method.getBody().getStmts().size()) ;
         for (var stmt : method.getBody().getStmts()) {
         	System.out.println("       " + stmt.toString()) ;
         }
+        */
     	//System.out.println(">>> " + method.getName() + " branches " + targetStmts.size() + " : " + stillOpenBranchTargets) ;
     	
     }
@@ -137,7 +140,7 @@ public class CoverageTracker {
      * <p>The method returns true if the test gives new coverage (either statement
      * of branch). 
      */
-    public boolean registerPathCoveredByTesting(SymbolicState endstate) {
+    public boolean registerPathCoveredByTestingxxx(SymbolicState endstate) {
     	boolean hasNewCoverage = false ; 
     	// register visited statements:
 		List<Stmt> visitedStmts = BranchHistoryUtil.getPathFromBranchHistory(
@@ -160,17 +163,47 @@ public class CoverageTracker {
 		// (even if it does not register new stmt or branch):
 		hasNewCoverage = hasNewCoverage || endstate.isExceptionThrown() ;
 		
+		/*
 		if (hasNewCoverage) {
 			System.out.println(">>> recording path: " + visitedStmts) ;
 			System.out.println("    branches-list: " + BranchHistoryUtil.getStmtStmtListOfBranches(endstate.getBranchHistory2())) ;
 			System.out.println("    path-constraints: " + endstate.getPathConstraints()) ;
 			System.out.println("    engine-constraints: " + endstate.getEngineConstraints()) ;
 		}
+		*/
 		
 		//System.out.println(">>> test-path, has new coverage:" + hasNewCoverage + ", exceptional:" + endstate.isExceptionThrown()) ;
 		//System.out.println(">>> test-path: " + visitedStmts + ", has new coverage:" + hasNewCoverage + ", exceptional:" + endstate.isExceptionThrown()) ;
 		//System.out.println(">>> branch-history: " + endstate.getBranchHistory2()) ;
 		
+    	return hasNewCoverage ;
+    }
+    
+    public boolean registerPathCoveredByTesting(InstructionHistory ihist) {
+    	
+    	boolean hasNewCoverage = false ; 
+    	Stmt prevStmt = null ;
+    	StmtGraph<?> currentCfg = null ;
+    	
+    	for (var hi : ihist.getHistory()) {
+    		if (hi instanceof InstructionHistory.MethodSwitchItem) {
+    			prevStmt =  null ;
+    			currentCfg = ((InstructionHistory.MethodSwitchItem) hi).method.getBody().getStmtGraph() ;
+    			continue ;
+    		}
+    		Stmt stmt = ((InstructionHistory.InstructionItem) hi).stmt ;
+    		boolean changed = stillOpenStmtTargets.remove(stmt) ;
+    		if (changed) hasNewCoverage = true ;
+    		
+    		if (prevStmt != null) {
+    			Integer branch = BranchHistoryUtil.getBranchHash(currentCfg,prevStmt,stmt) ;
+    			if (branch != null) {
+    				changed = stillOpenBranchTargets.remove(branch) ;
+    				if (changed) hasNewCoverage = true ;
+    			}
+    		}
+    		prevStmt = stmt ;
+    	}
     	return hasNewCoverage ;
     }
     

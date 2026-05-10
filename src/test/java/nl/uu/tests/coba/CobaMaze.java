@@ -24,28 +24,31 @@ public class CobaMaze {
 		//String CUT = "cobabench.CobaSimple" ;
 		//String CUT = "cobabench.CobaNullDeref" ;
 		//String CUT = "cobabench.CobaVarDefaultInit" ;
+		//String CUT = "cobabench.mazebm.BinaryTreeY" ;
+		String CUT = "cobabench.CobaParamOtherClasses" ;
+		
 		
 		// classes from Maze-bm:
 		//String CUT = "cobabench.mazebm.TriangleClassifier" ;
 		//String CUT = "cobabench.mazebm.AckermannPeter" ;
 		//String CUT = "cobabench.mazebm.BinarySearch" ;
-		//String CUT = "cobabench.mazebm.BinaryTree" ;
+		//String CUT = "cobabench.mazebm.BinaryTreeX" ;
 		//String CUT = "cobabench.mazebm.BitwiseManipulator" ;
 		//String CUT = "cobabench.mazebm.IntUtils" ;
 		//String CUT = "cobabench.mazebm.StringUtils" ;
 		//String CUT = "cobabench.mazebm.BracketBalancer" ;
 		//String CUT = "cobabench.mazebm.ConnectedComponents" ;		
 		//String CUT = "cobabench.mazebm.ConvergingPaths" ;
-		//String CUT = "cobabench.mazebm.Dijkstra" ;
-		//String CUT = "cobabench.mazebm.ExprEvaluator" ;
-		// String CUT = "cobabench.mazebm.FloatStatistics" ;
+		// String CUT = "cobabench.mazebm.Dijkstra" ;
+		//String CUT = "cobabench.mazebm.ExprEvaluator" ; // challange
+		//String CUT = "cobabench.mazebm.FloatStatistics" ;
 		//String CUT = "cobabench.mazebm.GraphTraversal" ;
 		//String CUT = "cobabench.mazebm.HeapSort" ;
 		//String CUT = "cobabench.mazebm.MatrixAnalyzer" ;
 		//String CUT = "cobabench.mazebm.NestedLoops" ;
-		//String CUT = "cobabench.mazebm.QuickSort" ;
-		//String CUT = "cobabench.mazebm.StringPatternMatcher" ;
-		String CUT = "cobabench.mazebm.SinglyLinkedList" ;
+		//String CUT = "cobabench.mazebm.QuickSort" ; 
+		//String CUT = "cobabench.mazebm.StringPatternMatcher" ; 
+		//String CUT = "cobabench.mazebm.SinglyLinkedList" ;
 		
 			
 		String sp = " " ;
@@ -53,13 +56,17 @@ public class CobaMaze {
 		String argz =   "--classpath=" + cobabenchPath + "/target/classes"
 				      + sp + "--classname=" + CUT 
 				      + sp + "--output-path=" + cobabenchPath + "/src/test/java/"
+				      //+ sp + "-C"
 				      // + sp + "-j=JUnit4"
 				      //+ sp + "-s=RPS -u=UH " 
-				      + sp + "-m=add"
+				      //+ sp + "-s=COS"
+				      //+ sp + "-s=PS" + sp + "-u=DTUH"
+				      //+ sp + "-m=findx"
 				      + sp + "-s=BFS"
+				      
 				      + sp + "--minimalistic-suite=true"
 				      + sp + "-b=60"
-				      //+ sp + "--max-depth=40"
+				      //+ sp + "--max-depth=50"
 				      + sp + "--constrain-FP-params-to-normal-numbers=true"
 				      //+ sp + "--surpress-regression-oracles=false"
 				      //+ sp + "--propagate-unexpected-exceptions=true"

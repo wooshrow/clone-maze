@@ -29,10 +29,10 @@ public class ConcreteExecutor {
     public ExecutionResult execute(Constructor<?> ctor, Method method, ArgMap argMap) {
         // If not static, create an instance of the class
         Object instance = null;
-        if (!Modifier.isStatic(method.getModifiers())) {
+        if (method == null || !Modifier.isStatic(method.getModifiers())) {
             ExecutionResult result = ObjectInstantiation.createInstance(ctor, argMap);
             // If constructor throws an exception, return it
-            if (result.isException()) {
+            if (result.isException() || method == null) {
                 return result;
             }
             instance = result.retval();
@@ -54,10 +54,10 @@ public class ConcreteExecutor {
     public ExecutionResult execute(Constructor<?> ctor, Method method, Object[] ctorArgs, Object[] args) {
         // If not static, create an instance of the class
         Object instance = null;
-        if (!Modifier.isStatic(method.getModifiers())) {
+        if (method == null || !Modifier.isStatic(method.getModifiers())) {
             ExecutionResult result = ObjectInstantiation.createInstance(ctor, ctorArgs);
             // If constructor throws an exception, return it
-            if (result.isException()) {
+            if (result.isException() || method == null) {
                 return result;
             }
             instance = result.retval();

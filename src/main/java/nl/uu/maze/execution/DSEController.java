@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -34,6 +35,7 @@ import nl.uu.maze.search.strategy.SymbolicSearchStrategy;
 import nl.uu.maze.util.BranchHistoryUtil;
 import nl.uu.maze.util.Pair;
 import sootup.core.graph.StmtGraph;
+import sootup.core.jimple.common.stmt.Stmt;
 import sootup.java.core.JavaSootClass;
 import sootup.java.core.JavaSootMethod;
 import sootup.java.core.types.JavaClassType;
@@ -99,6 +101,8 @@ public class DSEController {
             throws Exception {
         instrumenter = new BytecodeInstrumenter(classPath);
         ClassLoader classLoader;
+        classLoader = instrumenter.getClassLoader();
+        /*
         if (concreteDriven) {
             classLoader = instrumenter.getClassLoader();
         } else {
@@ -109,6 +113,7 @@ public class DSEController {
             }
             classLoader = new URLClassLoader(urls);
         }
+        */
         this.outPath = Path.of(outPath);
         this.methodName = methodName;
         this.maxDepth = maxDepth;
@@ -147,9 +152,13 @@ public class DSEController {
         this.timeBudget = timeBudget;
         // Instrument the class if concrete-driven
         // If this class was instrumented before, it will reuse previous results
-        this.instrumented = concreteDriven
-                ? instrumenter.instrument(className)
-                : null;
+        //this.instrumented = concreteDriven
+        //        ? instrumenter.instrument(className)
+        //       : null;
+        // WP: always instrument, as we also need it for history reconstruction:
+        if (this.instrumented == null)
+        	  this.instrumented = instrumenter.instrument(className) ;
+        
 
         JavaClassType classType = analyzer.getClassType(className);
         this.sootClass = analyzer.getSootClass(classType);
@@ -164,8 +173,16 @@ public class DSEController {
         for (JavaSootMethod method : methods) {
             if (!method.isPublic() || pattern.matcher(method.getName()).matches()
                     || (!methodName.equals("all") && !method.getName().equals(methodName))) {
+            	// we won't target these methods
+            	
+            	if (!method.isPublic()) {
+            		// but coverage over non-public methods are still tracked
+            		CoverageTracker.getInstance().addTargets(method) ;
+            	}
+            	
                 continue;
             }
+           
 
             if (method.isStatic()) {
                 staticMuts.add(method);
@@ -174,6 +191,7 @@ public class DSEController {
             }
             CoverageTracker.getInstance().addTargets(method) ;
             logger.info("Adding " + method.getName() + " as a target, #stmts:" + method.getBody().getStmts().size()) ;
+            //System.out.println(">>> " + method.getName() + "\n" + method.getBody()) ;
         }
 
         if (staticMuts.isEmpty() && nonStaticMuts.isEmpty()) {
@@ -200,6 +218,7 @@ public class DSEController {
             logger.info("Using constructor: {}, #stmts:{}", 
             		ctorSoot.getSignature(),
             		ctorSoot.getBody().getStmts().size());
+            //System.out.println(">>> " + ctorSoot.getName() + "\n" + ctorSoot.getBody()) ;
         }
 
         logger.info("Running {} DSE on class: {}", concreteDriven ? "concrete-driven" : "symbolic-driven",
@@ -297,6 +316,16 @@ public class DSEController {
             if (states.isEmpty()) {
                 return;
             }
+            // there may be some symbolic states left in search strategy, from which
+            // we can try to generate tests from. However if the engine is configured 
+            // to add only coverage-contributing tests, and all coverage targets are already 
+            // covered, then we are done. 
+            if (EngineConfiguration.getInstance().minimalisticTestSuite
+            	&& CoverageTracker.getInstance().numberOfStillUnCoveredBranches() 
+            		+ CoverageTracker.getInstance().numberOfStillUnCoveredStmts() == 0) {
+            	return ;
+            }
+            // generating extra tests from left over symbolic states:
             logger.info("Generating test cases for remaining states in search strategy");
             for (SymbolicState state : states) {
                 // Check if we are over the time budget
@@ -311,7 +340,7 @@ public class DSEController {
         }
     }
     
-    int j = 0 ;
+    //int j = 0 ;
     int k = 0 ;
     
     /**
@@ -319,11 +348,16 @@ public class DSEController {
      */
     private void generateTestCase(SymbolicState state) {
         try {
-        	System.out.println("### test " + j) ; j++ ;
+        	//System.out.println("### test " + j) ; j++ ;
         	Optional<ArgMap> argMap = validator.evaluate(state);
             if (argMap.isPresent()) {
-            	var hasNewCov = CoverageTracker.getInstance().registerPathCoveredByTesting(state) ;
-                if (hasNewCov || ! EngineConfiguration.getInstance().minimalisticTestSuite) {
+            	System.out.println("--- test " + k) ; k++ ;
+            	System.out.println(">>> " + state.getMethod().getName()) ;
+            	InstructionHistory history = rerunToGetHistory(state.getMethod(), argMap.get()) ;
+            	//System.out.println("history: " + history.getHistory()) ;
+            	var hasNewCov = CoverageTracker.getInstance().registerPathCoveredByTesting(history) ;
+            	if (hasNewCov || ! EngineConfiguration.getInstance().minimalisticTestSuite) {
+                	/*
                 	System.out.println("    argmap: " + argMap.get()) ;
                 	for (var name : argMap.get().getArgsNames()) {
                 		var o = argMap.get().get(name) ;
@@ -332,13 +366,15 @@ public class DSEController {
                     		System.out.println("    " + name + " -> " + o_.length) ; 
                 		}
                 	}
+                	*/               	
                 	generator.addMethodTestCase(state.getMethod(), ctorSoot, argMap.get());
-                	System.out.println("--- test " + k) ; k++ ;
+                	
                 }
             }
         } catch (Exception e) {
-            logger.error("Error generating test case for method {}: {}", state.getMethod().getName(), e.getMessage());
+            logger.error("Error generating test case for method {}: {}, {}", state.getMethod().getName(), e.getClass().getName(), e.getMessage());
             logger.debug("Error stack trace: ", e);
+            
         }
     }
 
@@ -473,7 +509,7 @@ public class DSEController {
 
         return Optional.empty();
     }
-
+    
 
     /** Run symbolic-driven DSE to replay a concrete execution. */
     public Optional<SymbolicState> runSymbolicReplay(JavaSootMethod method) {
@@ -533,7 +569,9 @@ public class DSEController {
                 
                 if (isNew) {
                 	// additionally, only add if the test would give new coverage
-                    boolean hasNewCov = CoverageTracker.getInstance().registerPathCoveredByTesting(finalState.get().returnToRootCaller()) ;
+                	var history = rerunToGetHistory(method, argMap) ;
+                	System.out.println("history: " + history.getHistory()) ;
+                	boolean hasNewCov = CoverageTracker.getInstance().registerPathCoveredByTesting(history) ;
                     if (hasNewCov || ! EngineConfiguration.getInstance().minimalisticTestSuite)
                     	// For the first concrete execution, argMap is populated by the concrete
                     	// executor
@@ -557,5 +595,83 @@ public class DSEController {
             argMap = validator.evaluate(pair.getFirst(), pair.getSecond().returnToRootCaller(), false);
             
         }
+    }
+    
+    /**
+     * Re-ren a test to obtain the history of instructions passed during the execution.
+     * 
+     * The given ArgMap should be fully specifying the concrete values of the parameters
+     * for the method-under-test.
+     * @throws NoSuchMethodException 
+     * @throws ClassNotFoundException 
+     */
+    public InstructionHistory rerunToGetHistory(JavaSootMethod method, ArgMap argMap) throws ClassNotFoundException, NoSuchMethodException {
+    	
+    	// need the instrumented version of the method to produce the trace, to be able
+    	// to replay:
+    	Method instrumentedJavaMethod = null ;
+    	
+    	System.out.println(">>> method: " + method.getSignature()) ;
+        
+    	if (! method.getName().equals("<init>")) {
+    		instrumentedJavaMethod = analyzer.getJavaMethod(method.getSignature(), instrumented);
+    	}    	
+    	System.out.println(">>> instrumented.") ;
+    	TraceManager.clearEntries();
+        //System.out.println(">>> concrete exec " + javaMethod.getName() + ": " + argMap.getArgsNames()) ;
+    	// run concretely to obtain the trace:
+    	
+        concrete.execute(ctor,instrumentedJavaMethod,argMap) ; // note: the ctor is already instrumented!
+        
+        // now run symbolically to obtain the sequence of instructions
+        
+        // construct the initial symbolic state:
+        SymbolicState initState ;
+        // For static methods, start at the target method
+        if (method.isStatic()) {
+            initState = new SymbolicState(method, analyzer.getCFG(method));
+            initState.switchToMethodState();
+        }
+        else {
+            initState = new SymbolicState(ctorSoot,ctorCfg);
+        }
+
+        InstructionHistory history = new InstructionHistory() ;
+        JavaSootMethod M = null ; 
+    	//StmtGraph cfg = null ;
+        SymbolicState currentSymbolicState = initState ;
+        boolean replayModeOn = true ;
+        // replay the execution step by step, until we get to a final state, 
+        // which is not a constructor state:
+        while (currentSymbolicState.isCtorState() || !currentSymbolicState.isFinalState()) {
+        	JavaSootMethod M_ = currentSymbolicState.getMethod() ;
+        	if (M==null || M_ != M) {
+        		history.addMethodSwitch(M_);
+        		M = M_ ;
+        		//cfg = currentSymbolicState.getCFG() ;
+        	}
+        	history.addInstruction(currentSymbolicState.getStmt());
+            // Symbolically execute the statement of the current symbolic state
+            List<SymbolicState> newStates = symbolic.step(currentSymbolicState,replayModeOn) ;
+            if (newStates.isEmpty()) {
+            	break ;
+            }
+            if (newStates.size() > 1) {
+            	logger.warn("Replaying a concrete execution leads to a symbolic state with multiple successors! Executed instr: " + currentSymbolicState.getStmt());            	
+            }
+            SymbolicState nextState = newStates.getFirst() ; 
+            if (currentSymbolicState.isCtorState()) {
+            	if (nextState.isFinalState()) {
+            		if (nextState.isExceptionThrown())
+            			break ;
+            		nextState.switchToMethodState();
+            		nextState.setMethod(method, analyzer.getCFG(method));
+            	}
+            }
+            //if (nextState == currentSymbolicState) 
+            //	break ;
+            currentSymbolicState = nextState ;
+        }
+        return history ;
     }
 }

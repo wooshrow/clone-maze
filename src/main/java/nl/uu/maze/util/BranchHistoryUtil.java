@@ -232,6 +232,19 @@ public class BranchHistoryUtil {
         return branchStmt.hashCode() + 31 * branchIndex;
     }
     
+    public static Integer getBranchHash(StmtGraph cfg, Stmt stmt, Stmt nextStmt) {
+    	if (stmt instanceof JIfStmt || stmt instanceof JSwitchStmt) {
+    		List<Stmt> successors = cfg.getAllSuccessors(stmt) ;
+    		int N = successors.size() ;
+    		for (int branchIndex = 0; branchIndex < N; branchIndex++) {
+    			if (successors.get(branchIndex) == nextStmt) {
+    				return getBranchHash(stmt,branchIndex) ;
+    			}
+    		}
+    	}	
+    	return null ;	
+    }
+    
     /**
      * Given a statement/instruction, and a branch-id (a hash) of a branch that goes out
      * from that statement, this function returns the next statement at the end of the

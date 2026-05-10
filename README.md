@@ -154,6 +154,56 @@ MAZE provides the following command-line options:
 | `--surpress-regression-oracles` | | Generated regression oracles will be commented out | No | `false` |
 | `--propagate-unexpected-exceptions` | | When a test throws an exception that is not declared as expected exception, it will be propagated | | `false` |
 
+## ▊▎Search Strategies and Heuristics
+
+MAZE generates tests through symbolic executions. It has two modes: symbolic driven (default) and concrete driven (enabled through the `-C` option). Current MAZE implementation targets public methods of the CUT. So, it does not generate tests for private methods, though private methods are indirectly tested if they are invoked by some public methods.
+
+Consider a target class C; for simplicity imagine it only has two public methods, m1(x) and m2(y), and both are static methods. The symbolic driven search starts with the symbolic initial state of m1 and that of m2 placed in a work-list W.
+
+   1. The search proceeds by taking out a symbolic state S from W.
+   1. The program instruction _stmt_ that is enabled on the state S is symbolically executed to yield one or more next symbolic states (you get multiple next states, if _stmt_ was a branching instruction). If S was a state from m1, _stmt_ would also be the current instruction from m1.
+   1. If a next state T is 'final': it reaches the end of a method (e.g. of m1), the execution leading to T was a full execution. The path constraints leading to the state (which was tracked during the search) is solved using a backend SMT solver to produce concrete inputs x for m1. This yields a test for m1, namely m1(x). The corresponding JUnit test-method will then be generated, and MAZE will also add regression oracle to the generated test.
+   1. The remaining (non-final) next states are added W.
+   1. Those steps are repeated until W becomes empty, or execution budget (`-b` option) is exhausted.   This symbolic states exploration is also bounded by a maximum depth specified by the `-d` option.
+
+MAZE defines a _search strategy_ as a policy in selecting which state from the work-list is to be selected next (step-1 above) for exploration. In turn, the affects the order in which execution paths is explored, e.g. in depth first way or in the breadth first way.
+
+The concrete driven search works one method at a time (whereas the above described symbolic driven search simultaneously targets all methods in the CUT). Imagine it starts with m1. As before we will be working with the work-list W. However, rather than adding symbolic states to W, we will be adding path constraints to W. The concrete driven search starts by generating a concrete input x for m1. Then:
+
+   1. It concretely executes m1(x). The execution is instrumented to construct the symbolic path constraint S passed by the execution. Suppose this constraint is a list P = [c1,c2,c3] that corresponds to three branch conditions, in the order of appearance, encountered during the execution m1(x).
+
+   1. If P has been encountered before, we skip forward to step-3. Else, generate m1(x) as a new JUnit test method. Add regression oracle to it. We also add prefixes of P: [c1], [c1,c2], and [c1,c2,c3] to W.
+
+   1. We take out a path-constraint p from W. A new path constrain q is constructed by negating the last condition in p (so q corresponds to an execution that follows p, but at the last decision point q takes a different decision). An SMT solver is used to solve q to produce a new concrete input x for m1.
+
+   1. Those steps are repeated until W becomes empty, or execution budget (`-b` option) is exhausted.   
+
+Using the `--strategy` option you can set a specific search to use. The default is DFS (depth first search), which would work well for programs without a loop. It may not be the best search strategy for a program with some logic followed by a loop, as DSF will first explore different ways to iterate the loop, before it explores different ways to go through the logic that preceeds the loop. Implemented search strategies (which you can pass as your option for ``--strategy`):
+
+* `DepthFirst` or `DFS`: the aforementioned depth first search strategy.
+* `BreadthFirst` or `BFS`: breadth first search strategy.
+* `RandomPath` or `RPS`: random selection strategy.
+* `Probabilistic` or `PS`: probabilistic search strategy, using one or more heuristicss. The heuristics are set using the `--heuristic`. If multiple heuristics are used, their weight are specified using the `--weight`, in the same order. More on this is covered below.
+* `SubpathGuided` or `SGS`: subpath guided search strategy.
+* `UniformRandom` or `URS`: PS with uniform selection as the heuristic (UH).
+* `CoverageOptimized` or `COS`: PS with three heuristics: DistanceToUncovered, RecentCoverage,xxxx
+
+
+* `FeasibilityOptimized` or `FOS`
+* `RandomPath` or `RPS`
+
+Available heuristics:
+
+* `Uniform` or `UH`
+* `DistanceToUncovered` or `DTUH`
+* `RecentCoverage` or `RCH`
+* `QueryCost` or `QCH`
+* `SmallestDepth` or `SDH`
+* `GreatestDepth` or `GDH`
+* `SmallestCallDepth` or `SCDH`
+* `GreatestCallDepth` or `GCDH`
+* `ShortestWaitingTime` or `SWTH`
+* `LongestWaitingTime` or `LWTH`
 
 ## ▊▎Test Oracles
 

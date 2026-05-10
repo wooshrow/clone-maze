@@ -371,7 +371,7 @@ public class JUnitTestGenerator {
         builtTestCases.add(hash);
         
         String testcaseName = createTestName(method.getName()) ;
-        System.out.println("    " + testcaseName) ;
+        //System.out.println("    " + testcaseName) ;
         methodBuilder.setName(testcaseName);
         classBuilder.addMethod(methodBuilder.build());
     }
