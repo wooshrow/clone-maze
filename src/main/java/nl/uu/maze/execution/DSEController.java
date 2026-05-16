@@ -101,8 +101,11 @@ public class DSEController {
             throws Exception {
         instrumenter = new BytecodeInstrumenter(classPath);
         ClassLoader classLoader;
-        classLoader = instrumenter.getClassLoader();
         /*
+         WP: changing the logic below to choose which classloader to use. Since in the new
+         setup we always use the instrumented CUT for stmt-history reconstruction, we will
+         always use the class-loader from the instrumenter:
+         
         if (concreteDriven) {
             classLoader = instrumenter.getClassLoader();
         } else {
@@ -114,6 +117,11 @@ public class DSEController {
             classLoader = new URLClassLoader(urls);
         }
         */
+        
+        // WP: as mentioned above, we'll change the logic to always use the instrumenter's 
+        // class-loader:
+        classLoader = instrumenter.getClassLoader();
+        
         this.outPath = Path.of(outPath);
         this.methodName = methodName;
         this.maxDepth = maxDepth;
@@ -155,9 +163,13 @@ public class DSEController {
         //this.instrumented = concreteDriven
         //        ? instrumenter.instrument(className)
         //       : null;
-        // WP: always instrument, as we also need it for history reconstruction:
+        
+        // WP: changing the above instrumentation logic.
+        // Setting MAZE to always instrument, as we also need it for stmt-history reconstruction:
+        
         if (this.instrumented == null)
-        	  this.instrumented = instrumenter.instrument(className) ;
+        	  //this.instrumented = instrumenter.instrument(className) ;
+  	  		  this.instrumented = instrumenter.instrument2(className) ;
         
 
         JavaClassType classType = analyzer.getClassType(className);
@@ -341,7 +353,7 @@ public class DSEController {
     }
     
     //int j = 0 ;
-    int k = 0 ;
+    //int k = 0 ;
     
     /**
      * Generate a test case for the given method and symbolic state.
@@ -351,8 +363,8 @@ public class DSEController {
         	//System.out.println("### test " + j) ; j++ ;
         	Optional<ArgMap> argMap = validator.evaluate(state);
             if (argMap.isPresent()) {
-            	System.out.println("--- test " + k) ; k++ ;
-            	System.out.println(">>> " + state.getMethod().getName()) ;
+            	//System.out.println("--- test " + k) ; k++ ;
+            	//System.out.println(">>> " + state.getMethod().getName()) ;
             	InstructionHistory history = rerunToGetHistory(state.getMethod(), argMap.get()) ;
             	//System.out.println("history: " + history.getHistory()) ;
             	var hasNewCov = CoverageTracker.getInstance().registerPathCoveredByTesting(history) ;
@@ -570,7 +582,7 @@ public class DSEController {
                 if (isNew) {
                 	// additionally, only add if the test would give new coverage
                 	var history = rerunToGetHistory(method, argMap) ;
-                	System.out.println("history: " + history.getHistory()) ;
+                	//System.out.println("history: " + history.getHistory()) ;
                 	boolean hasNewCov = CoverageTracker.getInstance().registerPathCoveredByTesting(history) ;
                     if (hasNewCov || ! EngineConfiguration.getInstance().minimalisticTestSuite)
                     	// For the first concrete execution, argMap is populated by the concrete
@@ -611,12 +623,12 @@ public class DSEController {
     	// to replay:
     	Method instrumentedJavaMethod = null ;
     	
-    	System.out.println(">>> method: " + method.getSignature()) ;
+    	//System.out.println(">>> method: " + method.getSignature()) ;
         
     	if (! method.getName().equals("<init>")) {
     		instrumentedJavaMethod = analyzer.getJavaMethod(method.getSignature(), instrumented);
     	}    	
-    	System.out.println(">>> instrumented.") ;
+    	//System.out.println(">>> instrumented.") ;
     	TraceManager.clearEntries();
         //System.out.println(">>> concrete exec " + javaMethod.getName() + ": " + argMap.getArgsNames()) ;
     	// run concretely to obtain the trace:

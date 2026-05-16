@@ -21,7 +21,7 @@ public class CobaConcreteDriven {
 		//String CUT = "cobabench.FloatStatisticsX" ;
 		//String CUT = "cobabench.SinglyLinkedListX" ;
 		
-		String CUT = "cobabench.TriangleClassifier3" ;
+		//String CUT = "cobabench.TriangleClassifier3" ;
 		//String CUT = "cobabench.CobaBranches" ;
 		
 		// maze bm classes:
@@ -36,7 +36,7 @@ public class CobaConcreteDriven {
 		//String CUT = "cobabench.mazebm.ConnectedComponents" ;
 		//String CUT = "cobabench.mazebm.ConvergingPaths" ;
 		//String CUT = "cobabench.mazebm.Dijkstra" ;
-		//String CUT = "cobabench.mazebm.ExprEvaluator" ;
+		String CUT = "cobabench.mazebm.ExprEvaluator" ;
 		//String CUT = "cobabench.mazebm.FloatStatistics" ;
 		//String CUT = "cobabench.mazebm.GraphTraversal" ;
 		//String CUT = "cobabench.mazebm.HeapSort" ;

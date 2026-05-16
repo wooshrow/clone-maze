@@ -46,6 +46,12 @@ public class ObjectInstantiation {
                         true);
             }
         }
+        
+        // WP for enum:
+        if (clazz.isEnum()) {
+        	Object[] enumconsts = clazz.getEnumConstants() ;
+        	return new ExecutionResult(enumconsts[0], null, false);
+        }
 
         // Try to create an instance using one of the constructors
         Constructor<?>[] ctors = clazz.getDeclaredConstructors();

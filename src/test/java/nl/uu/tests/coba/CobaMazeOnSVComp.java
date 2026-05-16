@@ -21,15 +21,15 @@ public class CobaMazeOnSVComp {
 		// classes from svcomp-bm:
 		
 		//String CUT = "cobabench.svcomp.float_nonlinear_calculation.Bessel" ;
-		//String CUT = "cobabench.svcomp.float_nonlinear_calculation.Conflict" ;
-		//String CUT = "cobabench.svcomp.float_nonlinear_calculation.Euler" ;
-		//String CUT = "cobabench.svcomp.float_nonlinear_calculation.Optimization" ;	// challenging
+		//String CUT = "cobabench.svcomp.float_nonlinear_calculation.Conflict" ;// challenge
+		//String CUT = "cobabench.svcomp.float_nonlinear_calculation.Euler" ; // challenge
+		//String CUT = "cobabench.svcomp.float_nonlinear_calculation.Optimization" ;	// challenge!
 		//String CUT = "cobabench.svcomp.MinePump.spec1_5_product1.Actions" ;			
 		//String CUT = "cobabench.svcomp.algorithms.BellmanFord_FunSat01" ;
 		//String CUT = "cobabench.svcomp.algorithms.BellmanFord_FunUnsat02" ;
 		String CUT = "cobabench.svcomp.algorithms.RedBlackTree_MemSat01.RedBlackTree_MemSat01" ; // challenging
-		
-		
+		//String CUT = "cobabench.svcomp.algorithms.RedBlackTree_MemSat01.RedBlackTreeNode" ; 
+		              
 		String sp = " " ;
 
 		String argz =   "--classpath=" + cobabenchPath + "/target/classes"
@@ -38,12 +38,12 @@ public class CobaMazeOnSVComp {
 				      // + sp + "-j=JUnit4"
 				      //+ sp + "-s=RPS -u=UH " 
 				      //+ sp + "-m=treeDelete"
-				      //+ sp + "-s=COS"
-				      + sp + "-s=BFS"
+				      + sp + "-s=COS"
+				      //+ sp + "-s=BFS"
 				      //+ sp + "--concrete-driven=true"
 				      + sp + "--minimalistic-suite=true"
-				      + sp + "-b=120"
-				      + sp + "--max-depth=100"
+				      + sp + "-b=180"
+				      //+ sp + "--max-depth=100"
 				      + sp + "--constrain-FP-params-to-normal-numbers=true"
 				      //+ sp + "--surpress-regression-oracles=false"
 				      //+ sp + "--propagate-unexpected-exceptions=true"

@@ -189,7 +189,7 @@ public class ArgMap {
             // So, create an empty ObjectInstance or array
             Object refValue;
             if (!args.containsKey(var)) {
-                if (type.isArray()) {
+            	if (type.isArray()) {
                     Class<?> componentType = type.getComponentType();
                     Object array = Array.newInstance(componentType, 0);
                     converted.put(key, array);
@@ -198,9 +198,9 @@ public class ArgMap {
                     refValue = new ObjectInstance((ClassType) sorts.determineType(type));
                 }
             } else {
-                refValue = args.get(var);
+            	refValue = args.get(var);
             }
-
+            //System.out.println(">>> key:" + key + ", var:" + var + " ty:" + type + ", val:" + refValue) ;
             Object obj = toJava(var, refValue, type);
             converted.put(key, obj);
         } else if (value instanceof ObjectInstance instance) {
@@ -212,7 +212,11 @@ public class ArgMap {
                 return null;
             }
             Object obj = result.retval();
-
+            // WP: to fix non-termination when trying to covert circular object structure,
+            // we pre-add the obj to the coverted-list, before filling it its fields: 
+            converted.put(key, obj);
+            
+            // now we fill in the fields of obj:
             for (Map.Entry<String, ObjectField> entry : instance.getFields().entrySet()) {
                 try {
                     Field field = ObjectUtils.findField(type, entry.getKey());
@@ -223,8 +227,11 @@ public class ArgMap {
                     logger.error("Failed to set field: {} in class: {}", entry.getKey(), type.getName());
                 }
             }
-
-            converted.put(key, obj);
+            // WP change this logic, as this cause non-termination when trying to convert a circular
+            // object structure (e.g. a linked list that is circular).
+            // We now put the obj in the coverted-set before we fill in its field.
+            // See above:
+            // converted.put(key, obj);
         } else if (value.getClass().isArray()) {
             converted.put(key, castArray(value, type));
         } else {
@@ -351,6 +358,17 @@ public class ArgMap {
 
         public boolean hasField(String name) {
             return fields.containsKey(name);
+        }
+        
+        @Override
+        public String toString() {
+        	String s = "" + type + "-> " ;
+        	for (var x : fields.entrySet()) {
+        		var v = x.getValue().getValue() ;
+        		s += x.getKey() + ":" + v + "/" + v.getClass().getSimpleName() ;
+        		s += ", " ;
+        	}
+        	return s ;
         }
     }
 }
