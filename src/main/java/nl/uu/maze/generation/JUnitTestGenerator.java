@@ -170,13 +170,13 @@ public class JUnitTestGenerator {
             return;
         }
         boolean isVoid = method.getReturnType().toString().equals("void");
-        
+        boolean violationDetected = false ;
         if (result.isException()
         	&& ((forCtor || result.thrownByCtor()) ?
         		  ! isExpectdedException(result.getTargetExceptionClass(), ctor) :
         		  ! isExpectdedException(result.getTargetExceptionClass(), method))) {
         	// violation, unexpected exception
-        	this.countNumberOfViolationFound ++ ;
+        	violationDetected = true ;
         	logger.warn("a test for " + method.getName() + "(..,) throws an unexpected exception.");
         }
         				
@@ -369,6 +369,7 @@ public class JUnitTestGenerator {
             return;
         }
         builtTestCases.add(hash);
+        if (violationDetected) this.countNumberOfViolationFound++ ;
         
         String testcaseName = createTestName(method.getName()) ;
         //System.out.println("    " + testcaseName) ;
@@ -751,18 +752,31 @@ public class JUnitTestGenerator {
             return;
         }
         for (Map.Entry<String, ObjectField> entry : inst.getFields().entrySet()) {
-            addSetFieldMethod();
+            
+        	addSetFieldMethod();
 
             ObjectField field = entry.getValue();
-            if (field.getValue() instanceof ObjectRef ref) {
+            // WP: adding a case the the field-value is just null:
+            if (field.getValue() == null) { 
+            	methodBuilder.addStatement("setField($L, \"$L\", $L)", var, entry.getKey(), null);
+            }
+            else if (field.getValue() instanceof ObjectRef ref) {
                 // If the reference is to another object, build that object first
                 // Note: Arrays etc. will always be references, i.e., not directly defined
                 // inside the ObjectInstance
                 if (!builtObjects.contains(ref.getVar())) {
                     buildFromReference(methodBuilder, argMap, builtObjects, ref, field.getType());
                 }
+                System.out.println(">>> setfield " + var + ", fname:" + entry.getKey() + ", val:" + ref.getVar()) ;
                 methodBuilder.addStatement("setField($L, \"$L\", $L)", var, entry.getKey(), ref.getVar());
             } else {
+            	System.out.println(">>>x meta-type val: " + field.getValue().getClass().getSimpleName()) ;
+            	String fname =  entry.getKey() ;
+            	System.out.println(">>>x setfield " + var + ", fname:" + entry.getKey() + ", val:" + entry.getValue().getValue()) ;
+            	if (fname.contains("instof")) {
+            		System.out.println(">>>x") ;
+            		int bla = 0 ;
+            	}
                 methodBuilder.addStatement("setField($L, \"$L\", $L)", var, entry.getKey(),
                         JavaLiteralFormatter.valueToString(entry.getValue().getValue()));
             }

@@ -24,10 +24,11 @@ public class CobaMaze {
 		//String CUT = "cobabench.CobaSimple" ;
 		//String CUT = "cobabench.CobaNullDeref" ;
 		//String CUT = "cobabench.CobaVarDefaultInit" ;
-		//String CUT = "cobabench.BinaryTreeY" ;
+		String CUT = "cobabench.BinaryTreeY" ;
 		// String CUT = "cobabench.CobaParamOtherClasses" ;
-		String CUT = "cobabench.RBTY" ;
+		//String CUT = "cobabench.RBTY" ;
 		//String CUT = "cobabench.CobbaInnerClasses" ;
+		//String CUT = "cobabench.CobaBinaryTree" ;
 		
 		
 		// classes from Maze-bm:
@@ -60,15 +61,16 @@ public class CobaMaze {
 				      + sp + "--output-path=" + cobabenchPath + "/src/test/java/"
 				      //+ sp + "-C"
 				      // + sp + "-j=JUnit4"
-				      //+ sp + "-s=RPS -u=UH " 
-				      + sp + "-s=COS"
+				      //+ sp + "-s=RPS" 
+				      //+ sp + "-s=COS"
 				      //+ sp + "-s=PS" + sp + "-u=DTUH"
-				      //+ sp + "-m=findx"
-				      //+ sp + "-s=BFS"
+				      //+ sp + "-m=inorder"
+				      + sp + "-s=BFS"
 				      
-				      + sp + "--minimalistic-suite=true"
+				      //+ sp + "--minimalistic-suite=true"
 				      + sp + "-b=60"
-				      //+ sp + "--max-depth=50"
+				      //+ sp + "-l=DEBUG" // log level
+				      //+ sp + "--max-depth=300"
 				      + sp + "--constrain-FP-params-to-normal-numbers=true"
 				      //+ sp + "--surpress-regression-oracles=false"
 				      //+ sp + "--propagate-unexpected-exceptions=true"

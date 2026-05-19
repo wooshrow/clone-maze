@@ -162,10 +162,23 @@ public class SymbolicStateValidator {
                         continue;
                     }
                     String fieldName = var.substring(var.indexOf('_') + 1);
+                    //
+                    // WP: fix bug
+                    //
+                    int k__ = fieldName.indexOf("_instof_") ;
+                    String fieldnameOrig = "" + fieldName ;
+                    //if (k__ > 0)
+                    //	fieldName = fieldName.substring(0, k__) ;
+                    	
                     Type fieldType = heapObj.getFieldType(fieldName);
 
                     ObjectInstance objInst = (ObjectInstance) argMap.getOrNew(varBase,
                             new ObjectInstance((ClassType) heapObj.getType()));
+                    if (k__ > 0) {
+                    	// DEBUG
+                    	int bla = 1 ;
+                    	
+                    }
                     // If the field is a heap reference, handle it accordingly
                     Expr<?> conRef = state.heap.getSingleAlias(var);
                     if (conRef != null) {

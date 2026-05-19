@@ -203,7 +203,7 @@ public class DSEController {
             }
             CoverageTracker.getInstance().addTargets(method) ;
             logger.info("Adding " + method.getName() + " as a target, #stmts:" + method.getBody().getStmts().size()) ;
-            //System.out.println(">>> " + method.getName() + "\n" + method.getBody()) ;
+            System.out.println(">>> " + method.getName() + "\n" + method.getBody()) ;
         }
 
         if (staticMuts.isEmpty() && nonStaticMuts.isEmpty()) {
@@ -378,7 +378,8 @@ public class DSEController {
                     		System.out.println("    " + name + " -> " + o_.length) ; 
                 		}
                 	}
-                	*/               	
+                	*/  
+            		var bla = 0 ;
                 	generator.addMethodTestCase(state.getMethod(), ctorSoot, argMap.get());
                 	
                 }
@@ -392,7 +393,7 @@ public class DSEController {
 
     /**
      * Initialize the symbolic search strategy with the right initial states.
-     */
+     */ 
     public void initializeSymbolic(SymbolicSearchStrategy searchStrategy) {
         // If methods under test include non-static methods, need to execute constructor
         // as well

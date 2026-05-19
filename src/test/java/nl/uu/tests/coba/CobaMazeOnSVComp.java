@@ -43,6 +43,7 @@ public class CobaMazeOnSVComp {
 				      //+ sp + "--concrete-driven=true"
 				      + sp + "--minimalistic-suite=true"
 				      + sp + "-b=180"
+				      + sp + "-l=OFF" // log off...
 				      //+ sp + "--max-depth=100"
 				      + sp + "--constrain-FP-params-to-normal-numbers=true"
 				      //+ sp + "--surpress-regression-oracles=false"
