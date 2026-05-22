@@ -250,8 +250,10 @@ public class DSEController {
         	int stmtCovered = stmtTargets - CoverageTracker.getInstance().numberOfStillUnCoveredStmts() ;
         	int branchTargets = CoverageTracker.getInstance().numberOfTargetBranches() ;
         	int branchCovered = branchTargets - CoverageTracker.getInstance().numberOfStillUnCoveredBranches() ;
+        	int untargetdBranchCovered = CoverageTracker.getInstance().numberOfCoveredUntargetedBrances() ;
         	logger.info("statement-converage (by test): " + stmtCovered + "/" + stmtTargets) ;
-        	logger.info("branch-converage    (by test): " + branchCovered + "/" + branchTargets) ;
+        	logger.info("branch-converage    (by test): " + branchCovered + "/" + branchTargets
+        			+ ", #untargetd-branches covered: " + untargetdBranchCovered) ;
         	generator.writeToFile(outPath); 
             logger.info("#generated test-cases: {}", generator.getNumberOfGeneratedTestCases()) ;
             if (generator.getNumberOfViolationFound() > 0) {
@@ -368,7 +370,7 @@ public class DSEController {
             	InstructionHistory history = rerunToGetHistory(state.getMethod(), argMap.get()) ;
             	//System.out.println("history: " + history.getHistory()) ;
             	var hasNewCov = CoverageTracker.getInstance().registerPathCoveredByTesting(history) ;
-            	if (hasNewCov || ! EngineConfiguration.getInstance().minimalisticTestSuite) {
+            	if (hasNewCov || state.isExceptionThrown() || ! EngineConfiguration.getInstance().minimalisticTestSuite) {
                 	/*
                 	System.out.println("    argmap: " + argMap.get()) ;
                 	for (var name : argMap.get().getArgsNames()) {
@@ -379,7 +381,6 @@ public class DSEController {
                 		}
                 	}
                 	*/  
-            		var bla = 0 ;
                 	generator.addMethodTestCase(state.getMethod(), ctorSoot, argMap.get());
                 	
                 }
@@ -664,6 +665,7 @@ public class DSEController {
         		//cfg = currentSymbolicState.getCFG() ;
         	}
         	history.addInstruction(currentSymbolicState.getStmt());
+        	
             // Symbolically execute the statement of the current symbolic state
             List<SymbolicState> newStates = symbolic.step(currentSymbolicState,replayModeOn) ;
             if (newStates.isEmpty()) {

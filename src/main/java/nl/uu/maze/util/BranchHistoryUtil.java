@@ -232,14 +232,16 @@ public class BranchHistoryUtil {
         return branchStmt.hashCode() + 31 * branchIndex;
     }
     
-    public static Integer getBranchHash(StmtGraph cfg, Stmt stmt, Stmt nextStmt) {
-    	if (stmt instanceof JIfStmt || stmt instanceof JSwitchStmt) {
-    		List<Stmt> successors = cfg.getAllSuccessors(stmt) ;
-    		int N = successors.size() ;
-    		for (int branchIndex = 0; branchIndex < N; branchIndex++) {
-    			if (successors.get(branchIndex) == nextStmt) {
+    @SuppressWarnings("unchecked")
+	public static Integer getBranchHash(StmtGraph cfg, Stmt stmt, Stmt nextStmt, boolean onlyBranchStmt) {
+    	List<Stmt> successors = cfg.getAllSuccessors(stmt) ;
+    	if ((!onlyBranchStmt && successors.size() > 1) || stmt instanceof JIfStmt || stmt instanceof JSwitchStmt) {
+    		int branchIndex = 0 ;
+    		for (Stmt S : successors) {
+    			if (S == nextStmt) { // deliberately using reference comparison
     				return getBranchHash(stmt,branchIndex) ;
     			}
+    			branchIndex++ ;
     		}
     	}	
     	return null ;	

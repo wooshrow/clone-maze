@@ -108,6 +108,7 @@ public class SymbolicExecutor {
             logger.error("Exception thrown during symbolic execution: {}", e.getMessage());
             logger.debug("Exception stack trace: ", e);
             state.setExceptionThrown();
+            int bla = 1 ;
             return List.of(state);
         }
     }

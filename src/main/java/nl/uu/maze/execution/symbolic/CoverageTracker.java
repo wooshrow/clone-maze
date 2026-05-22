@@ -51,12 +51,20 @@ public class CoverageTracker {
     private Set<Integer> stillOpenBranchTargets ;
     
     /**
+     * This tracks all covered branches, which may include branches which are not
+     * targeted. When a test does not produce new targeted coverage, but still
+     * produce new untargeted coverage, the engine may decide to still generate 
+     * that test. 
+     */
+    private Set<Integer> coveredRawBranches ;
+    
+    /**
      * This tracks the statements that have been visited/covered during exploration 
      * as MAZE searches for tests to generate. Note that this is different from coverage by 
-     * actual tests (by the generated tests). A statement can be covered during the exploration, 
-     * but it might remain uncovered by test, if no test is generated that execute that 
-     * statement. This can happen if for example all program paths that lead out from 
-     * that statement turn out to be infeasible.
+     * actual tests (by the generated tests) {@link #targetStmts}. A statement can be covered 
+     * during the exploration, but remains uncovered by test if no test is generated 
+     * that execute that statement. This can happen if for example all program paths 
+     * that lead out from that statement turn out to be infeasible.
      * 
      * <p>Tracking search-time/exploration-time coverage is relevant for some search strategies.
      */
@@ -71,6 +79,7 @@ public class CoverageTracker {
         
         targetBranches = new HashSet<>() ;
         stillOpenBranchTargets = new HashSet<>() ;
+        coveredRawBranches = new HashSet<>() ;
     }
     
     /**
@@ -84,14 +93,17 @@ public class CoverageTracker {
     	stillOpenStmtTargets.addAll(stmts) ;
     	//System.out.println("    after add #targets=" + targetStmts.size() + ", #open=" + stillOpenTargets.size()) ;
     	
-    	// adding branch-targets:
+    	// adding branch-targets; we will only incluce branches from branching
+    	// instructions as targets. In particular, exceptional jumps are not
+    	// targeted in this implementation
     	for (Stmt S : stmts) {
-    		int N = cfg.getAllSuccessors(S).size();
-    		if (N<2) continue ;
-    		for (int i=0 ; i<N ; i++) {
-    			int hash = BranchHistoryUtil.getBranchHash(S,i) ;
-    			targetBranches.add(hash) ;
-    			stillOpenBranchTargets.add(hash) ;
+    		var succs = cfg.getAllSuccessors(S) ;
+    		for (var nextS : succs) {
+    			Integer hash = BranchHistoryUtil.getBranchHash(cfg,S,nextS,true) ; // only branching instructions
+    			if (hash != null) {
+    				targetBranches.add(hash) ;
+        			stillOpenBranchTargets.add(hash) ;
+    			}
     		}
     	}
     	
@@ -191,14 +203,17 @@ public class CoverageTracker {
     			currentCfg = ((InstructionHistory.MethodSwitchItem) hi).method.getBody().getStmtGraph() ;
     			continue ;
     		}
-    		Stmt stmt = ((InstructionHistory.InstructionItem) hi).stmt ;
+    		var hi_ = (InstructionHistory.InstructionItem) hi ;
+    		Stmt stmt = hi_.stmt ;
     		boolean changed = stillOpenStmtTargets.remove(stmt) ;
     		if (changed) hasNewCoverage = true ;
     		
     		if (prevStmt != null) {
-    			Integer branch = BranchHistoryUtil.getBranchHash(currentCfg,prevStmt,stmt) ;
+    			Integer branch = BranchHistoryUtil.getBranchHash(currentCfg,prevStmt,stmt,false) ;
     			if (branch != null) {
     				changed = stillOpenBranchTargets.remove(branch) ;
+    				if (changed) hasNewCoverage = true ;
+    				changed = coveredRawBranches.add(branch) ;
     				if (changed) hasNewCoverage = true ;
     			}
     		}
@@ -228,6 +243,10 @@ public class CoverageTracker {
     
     public int numberOfStillUnCoveredBranches() {
     	return stillOpenBranchTargets.size() ;
+    }
+    
+    public int numberOfCoveredUntargetedBrances() {
+    	return (int) coveredRawBranches.stream().filter(br -> ! targetBranches.contains(br)).count() ;
     }
 
     /**

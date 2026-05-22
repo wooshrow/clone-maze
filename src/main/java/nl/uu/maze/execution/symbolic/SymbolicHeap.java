@@ -436,6 +436,8 @@ public class SymbolicHeap {
                 return;
 
             Set<Expr<?>> aliases = otherHeap.getAliases(ref);
+            // WP fix case when aliases is null:
+            if (aliases == null) continue ;
             aliasMap.put(ref, aliases);
             for (Expr<?> conRef : aliases) {
                 HeapObject obj = otherHeap.get(conRef);

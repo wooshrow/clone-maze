@@ -24,7 +24,7 @@ public class CobaMaze {
 		//String CUT = "cobabench.CobaSimple" ;
 		//String CUT = "cobabench.CobaNullDeref" ;
 		//String CUT = "cobabench.CobaVarDefaultInit" ;
-		String CUT = "cobabench.BinaryTreeY" ;
+		//String CUT = "cobabench.BinaryTreeY" ;
 		// String CUT = "cobabench.CobaParamOtherClasses" ;
 		//String CUT = "cobabench.RBTY" ;
 		//String CUT = "cobabench.CobbaInnerClasses" ;
@@ -35,7 +35,7 @@ public class CobaMaze {
 		//String CUT = "cobabench.mazebm.TriangleClassifier" ;
 		//String CUT = "cobabench.mazebm.AckermannPeter" ;
 		//String CUT = "cobabench.mazebm.BinarySearch" ;
-		//String CUT = "cobabench.mazebm.BinaryTree" ; // challenge
+		String CUT = "cobabench.mazebm.BinaryTree" ; // challenge
 		//String CUT = "cobabench.mazebm.BitwiseManipulator" ;
 		//String CUT = "cobabench.mazebm.IntUtils" ;
 		//String CUT = "cobabench.mazebm.StringUtils" ;
@@ -62,13 +62,13 @@ public class CobaMaze {
 				      //+ sp + "-C"
 				      // + sp + "-j=JUnit4"
 				      //+ sp + "-s=RPS" 
-				      //+ sp + "-s=COS"
+				      + sp + "-s=COS"
 				      //+ sp + "-s=PS" + sp + "-u=DTUH"
 				      //+ sp + "-m=inorder"
-				      + sp + "-s=BFS"
+				      //+ sp + "-s=BFS"
 				      
-				      //+ sp + "--minimalistic-suite=true"
-				      + sp + "-b=60"
+				      + sp + "--minimalistic-suite=true"
+				      + sp + "-b=120"
 				      //+ sp + "-l=DEBUG" // log level
 				      //+ sp + "--max-depth=300"
 				      + sp + "--constrain-FP-params-to-normal-numbers=true"

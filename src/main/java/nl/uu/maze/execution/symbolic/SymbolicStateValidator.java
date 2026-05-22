@@ -167,8 +167,8 @@ public class SymbolicStateValidator {
                     //
                     int k__ = fieldName.indexOf("_instof_") ;
                     String fieldnameOrig = "" + fieldName ;
-                    //if (k__ > 0)
-                    //	fieldName = fieldName.substring(0, k__) ;
+                    if (k__ > 0)
+                    	fieldName = fieldName.substring(0, k__) ;
                     	
                     Type fieldType = heapObj.getFieldType(fieldName);
 
