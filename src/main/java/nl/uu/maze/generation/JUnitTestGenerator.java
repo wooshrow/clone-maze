@@ -700,6 +700,13 @@ public class JUnitTestGenerator {
         if (ctor == null) {
             throw new IllegalArgumentException("No constructor found for class " + clazz.getName());
         }
+        
+        // special casses we will intercept:
+        if (clazz == Integer.class) {
+            methodBuilder.addStatement("Integer $L = 0", var);
+            return ;
+        }
+        
         // Make sure we use the constructor of the class we are generating the test for
         clazz = ctor.getDeclaringClass();
         Object[] arguments = ObjectInstantiation.generateArgs(ctor.getParameters(), MethodType.CTOR, null);
@@ -751,6 +758,16 @@ public class JUnitTestGenerator {
         if (inst == null) {
             return;
         }
+        // special cases:
+        if (inst.getType().toString().equals("java.lang.Integer")) {
+        	if (inst.getFields().size() > 0) {
+        		Object fieldValue = inst.getFields().get("value").getValue() ;
+        		methodBuilder.addStatement("$L = $L", var, JavaLiteralFormatter.valueToString(fieldValue)) ;
+        	}
+        	return ;
+        }
+        
+        // other cases
         for (Map.Entry<String, ObjectField> entry : inst.getFields().entrySet()) {
             
         	addSetFieldMethod();
@@ -767,17 +784,9 @@ public class JUnitTestGenerator {
                 if (!builtObjects.contains(ref.getVar())) {
                     buildFromReference(methodBuilder, argMap, builtObjects, ref, field.getType());
                 }
-                System.out.println(">>> setfield " + var + ", fname:" + entry.getKey() + ", val:" + ref.getVar()) ;
                 methodBuilder.addStatement("setField($L, \"$L\", $L)", var, entry.getKey(), ref.getVar());
             } else {
-            	System.out.println(">>>x meta-type val: " + field.getValue().getClass().getSimpleName()) ;
-            	String fname =  entry.getKey() ;
-            	System.out.println(">>>x setfield " + var + ", fname:" + entry.getKey() + ", val:" + entry.getValue().getValue()) ;
-            	if (fname.contains("instof")) {
-            		System.out.println(">>>x") ;
-            		int bla = 0 ;
-            	}
-                methodBuilder.addStatement("setField($L, \"$L\", $L)", var, entry.getKey(),
+            	methodBuilder.addStatement("setField($L, \"$L\", $L)", var, entry.getKey(),
                         JavaLiteralFormatter.valueToString(entry.getValue().getValue()));
             }
         }

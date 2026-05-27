@@ -106,7 +106,7 @@ public class SymbolicExecutor {
             // That way, a test case is generated for the path up to this point, even if we
             // didn't finish exploring the path
             logger.error("Exception thrown during symbolic execution: {}", e.getMessage());
-            logger.debug("Exception stack trace: ", e);
+            logger.error("Exception stack trace: ", e);
             state.setExceptionThrown();
             int bla = 1 ;
             return List.of(state);

@@ -30,6 +30,7 @@ import sootup.core.jimple.common.constant.Constant;
 import sootup.core.jimple.common.expr.*;
 import sootup.core.signatures.MethodSignature;
 import sootup.core.types.ClassType;
+import sootup.core.types.PrimitiveType.IntType;
 import sootup.core.types.Type;
 import sootup.core.types.VoidType;
 import sootup.java.core.JavaSootMethod;
@@ -85,7 +86,28 @@ public class MethodInvoker {
             executeConcrete(state, expr, base, storeResult);
             return Optional.empty();
         }
-
+        
+        // specials intercepting, black-box symbolic handling of invocation
+        String methodName = methodSig.getDeclClassType().getFullyQualifiedName() + "." + methodSig.getName() ;
+        if (base != null && methodName.equals("java.lang.Integer.intValue")) {
+            Expr<?> value = state.heap.getField(base.getName(), "value", IntType.getInstance()) ;
+            // set the retval, and return empty as if the call is concrete:
+            state.setReturnValue(value);
+            return Optional.empty() ;
+        }
+        if (methodName.equals("java.lang.Integer.valueOf")) { // this one is a static method
+        	ClassType IntegerSootTy = methodSig.getDeclClassType() ;
+        	// get its arg:
+        	Immediate arg0 = expr.getArg(0) ;
+        	Expr<?> arg0Expr = jimpleToZ3.transform(arg0, state);
+        	// allocate a new Integer in the sym-heap:
+        	Expr<?> refToNewObj = state.heap.allocateObject(IntegerSootTy) ;
+        	state.heap.setField(refToNewObj, "value", arg0Expr, IntegerSootTy) ;
+        	// set the ref to the new Integer as the retval:
+        	state.setReturnValue(refToNewObj);
+            return Optional.empty() ;
+        }
+        
         // For interface invoke expressions, try to resolve the method call to a
         // concrete class
         if (expr instanceof JInterfaceInvokeExpr && base != null && base.getType() instanceof ClassType baseType) {
@@ -111,7 +133,10 @@ public class MethodInvoker {
                 methodSig.getDeclClassType().getFullyQualifiedName().startsWith("javax.");
     }
 
-    /** Execute a method call symbolically. */
+    /** 
+     * Execute a method call symbolically. This means going into the called method, and
+     * executing it symbolically.
+     */
     private Optional<SymbolicState> executeSymbolic(SymbolicState state, JavaSootMethod method, AbstractInvokeExpr expr,
             Local base) {
         // Create a fresh state that will enter the method call
@@ -178,7 +203,7 @@ public class MethodInvoker {
                 state.setExceptionThrown();
                 return;
             }
-
+            
             Optional<ArgMap> argMapOpt = validator.evaluate(state, true);
             if (argMapOpt.isEmpty()) {
                 state.setInfeasible();
@@ -199,6 +224,7 @@ public class MethodInvoker {
                                 ((Method) executable).getParameterTypes());
                     }
                     original = ObjectUtils.shallowCopy(instance, instance.getClass());
+
                     addConcretizationConstraints(state, heapObj, instance, symRef);
                 } catch (ClassNotFoundException | NoSuchMethodException e) {
                     throw new UnsupportedOperationException(

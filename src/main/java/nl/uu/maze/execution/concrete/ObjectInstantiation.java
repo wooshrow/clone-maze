@@ -17,6 +17,9 @@ import nl.uu.maze.execution.MethodType;
 /**
  * Instantiates objects using Java reflection and randomly generated
  * arguments.
+ * 
+ * <p>WP NOTE: random generation is disabled for now. The class is heavily
+ * used by sym-exec, in such a way that it should behave deterministically.
  */
 public class ObjectInstantiation {
     private static final Logger logger = LoggerFactory.getLogger(ObjectInstantiation.class);
@@ -52,13 +55,13 @@ public class ObjectInstantiation {
         	Object[] enumconsts = clazz.getEnumConstants() ;
         	return new ExecutionResult(enumconsts[0], null, false);
         }
-
+        
         // Try to create an instance using one of the constructors
         Constructor<?>[] ctors = clazz.getDeclaredConstructors();
         // Sort the constructors by the number of parameters to try the easiest first
         Arrays.sort(ctors, (a, b) -> Integer.compare(a.getParameterCount(), b.getParameterCount()));
         for (Constructor<?> ctor : ctors) {
-            Object[] args = generateArgs(ctor.getParameters(), MethodType.CTOR, null);
+        	Object[] args = generateArgs(ctor.getParameters(), MethodType.CTOR, null);
             ExecutionResult result = createInstance(ctor, args);
             if (!result.isException()) {
                 return result;
@@ -128,15 +131,18 @@ public class ObjectInstantiation {
 
             // param-i does not appear in the argMap, so it is unconstrained.
             // Either use a random value, or use a default value depending on the setting:
-            if (EngineConfiguration.getInstance().randomSeedingInConcreteDriven) {
-            	arguments[i] = generateRandom(params[i].getType());
-            }
-            else {
+            
+            // WP: we should not do this, as this method is also involved in
+            // symbolic execution. So we should keep this deterministic.
+            //if (EngineConfiguration.getInstance().randomSeedingInConcreteDriven) {
+            //	arguments[i] = generateRandom(params[i].getType());
+            //}
+            //else {
             	// Get a default value for the parameter type
-                arguments[i] = getDefault(params[i].getType());
-            }            
-            //System.out.println(">>>> gen using default val " + methodType + ", " + params[i].getName() + "-->" + arguments[i]) ;
-
+              //  arguments[i] = getDefault(params[i].getType());
+            //}            
+            arguments[i] = getDefault(params[i].getType());
+            
             // Add new argument to argMap
             if (argMap != null) {
                 argMap.set(name, arguments[i]);

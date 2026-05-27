@@ -189,7 +189,10 @@ public class ArgMap {
             // So, create an empty ObjectInstance or array
             Object refValue;
             if (!args.containsKey(var)) {
-            	if (type.isArray()) {
+            	if (type == Integer.class) {
+            		refValue = (Integer) 9 ;
+            	}
+            	else if (type.isArray()) {
                     Class<?> componentType = type.getComponentType();
                     Object array = Array.newInstance(componentType, 0);
                     converted.put(key, array);
@@ -212,10 +215,25 @@ public class ArgMap {
                 return null;
             }
             Object obj = result.retval();
+        
+            // special cases
+        	if (obj instanceof Integer) {
+        		if (instance.getFields().size() > 0) {
+        			// get the symbolic value-field of this int:
+        			Object fieldValue = instance.getFields().get("value").getValue() ;
+        			Object convertedValue = toJava(key + "_value", fieldValue, Integer.class);
+                    obj = convertedValue ;
+        		}
+        		converted.put(key, obj);
+        		return converted.get(key);
+        	}
+            
+        	// non-special cases
+        	
             // WP: to fix non-termination when trying to covert circular object structure,
             // we pre-add the obj to the coverted-list, before filling it its fields: 
             converted.put(key, obj);
-            
+               
             // now we fill in the fields of obj:
             for (Map.Entry<String, ObjectField> entry : instance.getFields().entrySet()) {
                 try {
@@ -224,7 +242,7 @@ public class ArgMap {
                     Object convertedValue = toJava(key + "_" + entry.getKey(), fieldValue, field.getType());
                     field.set(obj, convertedValue);
                 } catch (Exception e) {
-                    logger.error("Failed to set field: {} in class: {}", entry.getKey(), type.getName());
+                	logger.error("Failed to set field: {} in class: {}", entry.getKey(), type.getName());
                 }
             }
             // WP change this logic, as this cause non-termination when trying to convert a circular

@@ -190,6 +190,7 @@ public class DSEController {
             	if (!method.isPublic()) {
             		// but coverage over non-public methods are still tracked
             		CoverageTracker.getInstance().addTargets(method) ;
+                    System.out.println(">>> " + method.getName() + "\n" + method.getBody()) ;
             	}
             	
                 continue;
@@ -469,9 +470,8 @@ public class DSEController {
             }
 
             // Symbolically execute the statement of the current symbolic state
-            List<SymbolicState> newStates = symbolic.step(current, concreteDriven);
+            List<SymbolicState> newStates = symbolic.step(current, concreteDriven);  
             
- 
             // For ctor states, check for final states from which we can switch to the
             // target method(s)
             if (current.isCtorState()) {

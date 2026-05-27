@@ -81,6 +81,7 @@ public class ConcreteExecutor {
             return execute(instance, method, args);
         } catch (Exception e) {
             logger.warn("Failed to generate args for method {}: {}", method.getName(), e.getMessage());
+            e.printStackTrace();
             return new ExecutionResult(null, e, false);
         }
     }

@@ -108,7 +108,7 @@ public class HeapObjects {
 
         @Override
         public String toString() {
-            return fields.toString();
+            return "(" + type.toString() + ") " + fields.toString();
         }
     }
 

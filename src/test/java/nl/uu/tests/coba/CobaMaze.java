@@ -29,13 +29,14 @@ public class CobaMaze {
 		//String CUT = "cobabench.RBTY" ;
 		//String CUT = "cobabench.CobbaInnerClasses" ;
 		//String CUT = "cobabench.CobaBinaryTree" ;
+		//String CUT = "cobabench.CobaIntegerParam" ;
 		
 		
 		// classes from Maze-bm:
-		//String CUT = "cobabench.mazebm.TriangleClassifier" ;
+		String CUT = "cobabench.mazebm.TriangleClassifier" ;
 		//String CUT = "cobabench.mazebm.AckermannPeter" ;
 		//String CUT = "cobabench.mazebm.BinarySearch" ;
-		String CUT = "cobabench.mazebm.BinaryTree" ; // challenge
+		//String CUT = "cobabench.mazebm.BinaryTree" ; // challenge
 		//String CUT = "cobabench.mazebm.BitwiseManipulator" ;
 		//String CUT = "cobabench.mazebm.IntUtils" ;
 		//String CUT = "cobabench.mazebm.StringUtils" ;
@@ -62,10 +63,10 @@ public class CobaMaze {
 				      //+ sp + "-C"
 				      // + sp + "-j=JUnit4"
 				      //+ sp + "-s=RPS" 
-				      + sp + "-s=COS"
+				      //+ sp + "-s=COS"
 				      //+ sp + "-s=PS" + sp + "-u=DTUH"
 				      //+ sp + "-m=inorder"
-				      //+ sp + "-s=BFS"
+				      + sp + "-s=BFS"
 				      
 				      + sp + "--minimalistic-suite=true"
 				      + sp + "-b=120"

@@ -117,9 +117,7 @@ public class BytecodeInstrumenter {
             classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
 
             byte[] instrumentedBytes = classWriter.toByteArray();
-            System.out.println("--- want to load class " + file.fullName) ;
             classLoader.addClass(file.fullName, instrumentedBytes);
-            System.out.println("--- loaded") ;
         }
 
         return dependencyCollector.getDependencies();
@@ -164,9 +162,7 @@ public class BytecodeInstrumenter {
             classReader.accept(classVisitor, ClassReader.EXPAND_FRAMES);
 
             byte[] instrumentedBytes = classWriter.toByteArray();
-            System.out.println("--- want to instrument and load class " + cf.fullName) ;
             classLoader.addClass(cf.fullName, instrumentedBytes);
-            System.out.println("--- done") ;
     	}
     	// Find the main class in the class loader and return it
         return classLoader.findClass(className);
@@ -227,8 +223,6 @@ public class BytecodeInstrumenter {
         String packageName = className.substring(0, className.lastIndexOf('.'));
         String resourcePath = packageName.replace(".", "/");
         
-        System.out.println("### class-name target to find: " + simpleName) ;
-
         List<ClassFileEntry> classFiles = new ArrayList<>();
         boolean found = false;
         for (String path : classPaths) {
@@ -277,16 +271,16 @@ public class BytecodeInstrumenter {
                     if (files != null) {
                         for (File f : files) {
                             // Filter for class files of the main class and nested classes
-                        	System.out.println(">>> listing file : " + f + ", just-name: " + f.getName()) ;
+                        	//System.out.println(">>> listing file : " + f + ", just-name: " + f.getName()) ;
                             if (f.getName().startsWith(simpleName) && f.getName().endsWith(".class")) {
                                 found = true;
                                 try {
                                     byte[] classBytes = Files.readAllBytes(f.toPath());
-                                    System.out.println("   grabbing bytes of " + f) ;
+                                    //System.out.println("   grabbing bytes of " + f) ;
                                     String name = f.getName().substring(0, f.getName().length() - 6);
                                     classFiles.add(new ClassFileEntry(name, packageName + '.' + name,
                                             resourcePath + '/' + name, classBytes));
-                                    System.out.println("   adding class-file of " + f) ;
+                                    //System.out.println("   adding class-file of " + f) ;
                                     // Found class file
                                 } catch (IOException e) {
                                     logger.error("Error reading class file: {}", f.getAbsolutePath(), e);
