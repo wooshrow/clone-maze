@@ -190,7 +190,7 @@ public class DSEController {
             	if (!method.isPublic()) {
             		// but coverage over non-public methods are still tracked
             		CoverageTracker.getInstance().addTargets(method) ;
-                    System.out.println(">>> " + method.getName() + "\n" + method.getBody()) ;
+                    //System.out.println(">>> " + method.getName() + "\n" + method.getBody()) ;
             	}
             	
                 continue;
@@ -204,7 +204,7 @@ public class DSEController {
             }
             CoverageTracker.getInstance().addTargets(method) ;
             logger.info("Adding " + method.getName() + " as a target, #stmts:" + method.getBody().getStmts().size()) ;
-            System.out.println(">>> " + method.getName() + "\n" + method.getBody()) ;
+            //System.out.println(">>> " + method.getName() + "\n" + method.getBody()) ;
         }
 
         if (staticMuts.isEmpty() && nonStaticMuts.isEmpty()) {
@@ -527,7 +527,8 @@ public class DSEController {
 
     /** Run symbolic-driven DSE to replay a concrete execution. */
     public Optional<SymbolicState> runSymbolicReplay(JavaSootMethod method) {
-        SymbolicState initState;
+        
+    	SymbolicState initState;
 
         // For static methods, start at the target method
         if (method.isStatic()) {
@@ -637,6 +638,7 @@ public class DSEController {
     	
         concrete.execute(ctor,instrumentedJavaMethod,argMap) ; // note: the ctor is already instrumented!
         
+        // System.out.println(">>> trace to REPLAY: " + TraceManager.traceEntries) ;
         // now run symbolically to obtain the sequence of instructions
         
         // construct the initial symbolic state:
@@ -667,6 +669,7 @@ public class DSEController {
         	history.addInstruction(currentSymbolicState.getStmt());
         	
             // Symbolically execute the statement of the current symbolic state
+        	// System.out.println("### cur stmt: " + currentSymbolicState.getStmt()) ;
             List<SymbolicState> newStates = symbolic.step(currentSymbolicState,replayModeOn) ;
             if (newStates.isEmpty()) {
             	break ;

@@ -106,9 +106,8 @@ public class SymbolicExecutor {
             // That way, a test case is generated for the path up to this point, even if we
             // didn't finish exploring the path
             logger.error("Exception thrown during symbolic execution: {}", e.getMessage());
-            logger.error("Exception stack trace: ", e);
+            //logger.error("Exception stack trace: ", e);
             state.setExceptionThrown();
-            int bla = 1 ;
             return List.of(state);
         }
     }
@@ -451,8 +450,32 @@ public class SymbolicExecutor {
     	
 
         // Special handling of parameters for reference types when replaying a trace
-        if (replay && rightOp instanceof JParameterRef && sorts.isRef(value)) {
-            SymbolicAliasResolver.resolveAliasForParameter(state, value);
+        //System.out.println("### right-side: " + value + "/ " + rightOp + "/" + rightOp.getClass().getSimpleName() + "/" 
+        //		+ sorts.isRef(value) 
+        //		+ "/ sort " + value.getSort()) ;
+        
+        // WP: this gives an issue when the Param is of type String. (Possibly also
+        // for Integer, Long etc) The instrumenter would generate aliasing trace-entry,
+        // but MAZE treats String as primitive, so it does not do aliasing-based
+        // state-split. In turns this creates a mismatch when interpreting the trace.
+        // Replacing the logic...
+        //if (replay && rightOp instanceof JParameterRef && sorts.isRef(value)) {
+        //	SymbolicAliasResolver.resolveAliasForParameter(state, value);
+        //}
+        //
+        // the new logic:
+        if (replay && rightOp instanceof JParameterRef) {
+        	if (sorts.isRef(value))
+        		
+        		SymbolicAliasResolver.resolveAliasForParameter(state, value);
+        	
+        	else if (Type.isObjectLikeType(rightOp.getType())){
+        		// e.g. for String, which the trace-instrumenter treats as reference,
+        		// so will create an alias-trace entry. BUT, MAZE deals with
+        		// string as a primitive, so we need to throw the trace entry
+        		TraceManager.consumeEntry(state.getMethodSignature());
+        	}
+        		
         }
 
         // Definition statements follow the same control flow as other statements

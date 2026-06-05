@@ -49,7 +49,8 @@ public class TraceManager {
     /**
      * Stores the trace entries for each method in memory.
      */
-    private static final Map<String, Queue<TraceEntry>> traceEntries = new HashMap<>();
+    //private static final Map<String, Queue<TraceEntry>> traceEntries = new HashMap<>();
+    public static final Map<String, Queue<TraceEntry>> traceEntries = new HashMap<>();
 
     /**
      * Record a trace entry for the specified method.
@@ -75,7 +76,9 @@ public class TraceManager {
      */
     public static TraceEntry consumeEntry(MethodSignature methodSig) {
         Queue<TraceEntry> entries = traceEntries.get(buildMethodSignature(methodSig));
-        return entries != null ? entries.poll() : null;
+        TraceEntry tre = entries != null ? entries.poll() : null;
+        //System.out.println(">>> consume tr " + tre) ;
+        return tre ;
     }
 
     /**
