@@ -216,17 +216,22 @@ public class ArgMap {
             }
             Object obj = result.retval();
         
-            // special cases
-        	if (obj instanceof Integer) {
+            // special case.
+            // Classes like Integer and Long appears to have a field called "value" that
+            // holds the primitive number it represents, but it is not a real field in the
+            // sense that we can't set its value with field.set(v).
+            // Handle this differently:
+        	if (obj instanceof Integer || obj instanceof Long) {
         		if (instance.getFields().size() > 0) {
         			// get the symbolic value-field of this int:
         			Object fieldValue = instance.getFields().get("value").getValue() ;
-        			Object convertedValue = toJava(key + "_value", fieldValue, Integer.class);
+        			Object convertedValue = toJava(key + "_value", fieldValue, obj.getClass());
                     obj = convertedValue ;
         		}
         		converted.put(key, obj);
         		return converted.get(key);
         	}
+            
             
         	// non-special cases
         	

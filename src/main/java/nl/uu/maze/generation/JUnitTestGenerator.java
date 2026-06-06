@@ -696,17 +696,20 @@ public class JUnitTestGenerator {
             return;
         }
 
+        // special case.
+        // Handle classes like Integer and Long as they do not actually have constructors
+        // (deprecated).
+        // Special handling:
+        if (clazz == Integer.class || clazz == Long.class) {
+            methodBuilder.addStatement(clazz.getSimpleName() + " $L = 0", var);
+            return ;
+        }
+        
         Constructor<?> ctor = analyzer.getJavaConstructor(clazz);
         if (ctor == null) {
             throw new IllegalArgumentException("No constructor found for class " + clazz.getName());
         }
-        
-        // special casses we will intercept:
-        if (clazz == Integer.class) {
-            methodBuilder.addStatement("Integer $L = 0", var);
-            return ;
-        }
-        
+        // IMPORTANT:
         // Make sure we use the constructor of the class we are generating the test for
         clazz = ctor.getDeclaringClass();
         Object[] arguments = ObjectInstantiation.generateArgs(ctor.getParameters(), MethodType.CTOR, null);
@@ -758,8 +761,14 @@ public class JUnitTestGenerator {
         if (inst == null) {
             return;
         }
-        // special cases:
-        if (inst.getType().toString().equals("java.lang.Integer")) {
+        
+        // special case.
+        // Classes like Integer and Long holds its primitive number in a field called
+        // "value", but it is not a usual field in the sense that we can't do setField on
+        // it.
+        // Special handling:
+        String inst_ty = inst.getType().toString() ;
+        if (inst_ty.equals("java.lang.Integer") || inst_ty.equals("java.lang.Long")) {
         	if (inst.getFields().size() > 0) {
         		Object fieldValue = inst.getFields().get("value").getValue() ;
         		methodBuilder.addStatement("$L = $L", var, JavaLiteralFormatter.valueToString(fieldValue)) ;

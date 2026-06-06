@@ -454,8 +454,8 @@ public class SymbolicExecutor {
         //		+ sorts.isRef(value) 
         //		+ "/ sort " + value.getSort()) ;
         
-        // WP: this gives an issue when the Param is of type String. (Possibly also
-        // for Integer, Long etc) The instrumenter would generate aliasing trace-entry,
+        // WP: this gives an issue when the Param is of type String. 
+        // The instrumenter would generate aliasing trace-entry,
         // but MAZE treats String as primitive, so it does not do aliasing-based
         // state-split. In turns this creates a mismatch when interpreting the trace.
         // Replacing the logic...
@@ -466,18 +466,17 @@ public class SymbolicExecutor {
         // the new logic:
         if (replay && rightOp instanceof JParameterRef) {
         	if (sorts.isRef(value))
-        		
         		SymbolicAliasResolver.resolveAliasForParameter(state, value);
-        	
-        	else if (Type.isObjectLikeType(rightOp.getType())){
-        		// e.g. for String, which the trace-instrumenter treats as reference,
-        		// so will create an alias-trace entry. BUT, MAZE deals with
-        		// string as a primitive, so we need to throw the trace entry
-        		TraceManager.consumeEntry(state.getMethodSignature());
-        	}
-        		
+        	else {
+        		if (Type.isObject(rightOp.getType())){
+        			// for String, which the trace-instrumenter treats as reference,
+            		// so will create an alias-trace entry. BUT, MAZE deals with
+            		// string as a primitive, so we need to throw the trace entry
+            		TraceManager.consumeEntry(state.getMethodSignature());
+        		}	
+        	}	
         }
-
+        
         // Definition statements follow the same control flow as other statements
         newStates.addAll(handleOtherStmts(state, replay));
         return newStates;

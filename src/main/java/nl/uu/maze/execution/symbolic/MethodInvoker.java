@@ -18,6 +18,7 @@ import nl.uu.maze.execution.ArgMap.ObjectRef;
 import nl.uu.maze.execution.MethodType;
 import nl.uu.maze.execution.concrete.*;
 import nl.uu.maze.execution.symbolic.HeapObjects.*;
+import nl.uu.maze.model.IntegerLikeMethods;
 import nl.uu.maze.transform.JavaToZ3Transformer;
 import nl.uu.maze.transform.JimpleToJavaTransformer;
 import nl.uu.maze.transform.JimpleToZ3Transformer;
@@ -87,27 +88,16 @@ public class MethodInvoker {
             return Optional.empty();
         }
         
-        // specials intercepting, black-box symbolic handling of invocation
-        String methodName = methodSig.getDeclClassType().getFullyQualifiedName() + "." + methodSig.getName() ;
-        if (base != null && methodName.equals("java.lang.Integer.intValue")) {
-            Expr<?> value = state.heap.getField(base.getName(), "value", IntType.getInstance()) ;
-            // set the retval, and return empty as if the call is concrete:
-            state.setReturnValue(value);
-            return Optional.empty() ;
+        // Handle the case where the called method has a symbolic model. The model will then be
+        // executed instead of the method. 
+        if(IntegerLikeMethods.MODELof_Int_intValue.executeModel(state, base, expr) != null) {
+        	// the execution by the model succeeded, we return empty, as if it was a concrete execution:
+        	return Optional.empty();
         }
-        if (methodName.equals("java.lang.Integer.valueOf")) { // this one is a static method
-        	ClassType IntegerSootTy = methodSig.getDeclClassType() ;
-        	// get its arg:
-        	Immediate arg0 = expr.getArg(0) ;
-        	Expr<?> arg0Expr = jimpleToZ3.transform(arg0, state);
-        	// allocate a new Integer in the sym-heap:
-        	Expr<?> refToNewObj = state.heap.allocateObject(IntegerSootTy) ;
-        	state.heap.setField(refToNewObj, "value", arg0Expr, IntegerSootTy) ;
-        	// set the ref to the new Integer as the retval:
-        	state.setReturnValue(refToNewObj);
-            return Optional.empty() ;
+        if(IntegerLikeMethods.MODELof_Int_valueOf.executeModel(state, base, expr) != null) {
+        	return Optional.empty();
         }
-        
+               
         // For interface invoke expressions, try to resolve the method call to a
         // concrete class
         if (expr instanceof JInterfaceInvokeExpr && base != null && base.getType() instanceof ClassType baseType) {
