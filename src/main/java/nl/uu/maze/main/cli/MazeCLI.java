@@ -104,6 +104,9 @@ public class MazeCLI implements Callable<Integer> {
     @Option(names = { "--check-divbyZero" }, description = "When true, MAZE will actively check expressions of the form x/y and x%y, whether a division or remainder by zero error can occur. (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean enableDivisionByZeroChecking ;
     
+    @Option(names = { "--max-array-size" }, description = "Maximum array size. (default: ${DEFAULT-VALUE})", defaultValue = "20", paramLabel = "<int>")
+    private int max_array_size ;
+    
     @Override
     public Integer call() {
         try {
@@ -119,6 +122,7 @@ public class MazeCLI implements Callable<Integer> {
             EngineConfiguration.getInstance().propagateUnexpectedExceptions = this.propagateUnexpectedExceptions ;
             EngineConfiguration.getInstance().enableDivisionByZeroChecking = this.enableDivisionByZeroChecking ;
             EngineConfiguration.getInstance().minimalisticTestSuite = this.minimalisticTestSuite ;
+            EngineConfiguration.getInstance().max_array_size = this.max_array_size ;
             
             // dealing with the rest of the options:
             

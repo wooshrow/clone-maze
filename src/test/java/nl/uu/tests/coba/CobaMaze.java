@@ -29,7 +29,10 @@ public class CobaMaze {
 		//String CUT = "cobabench.RBTY" ;
 		//String CUT = "cobabench.CobbaInnerClasses" ;
 		//String CUT = "cobabench.CobaBinaryTree" ;
-		String CUT = "cobabench.CobaIntegerParam" ;
+		// String CUT = "cobabench.CobaIntegerParam" ;
+		//String CUT = "cobabench.CobaArrayLength" ;
+		
+		
 		
 		
 		// classes from Maze-bm:
@@ -44,7 +47,7 @@ public class CobaMaze {
 		//String CUT = "cobabench.mazebm.ConnectedComponents" ;		
 		//String CUT = "cobabench.mazebm.ConvergingPaths" ;
 		//String CUT = "cobabench.mazebm.Dijkstra" ;
-		//String CUT = "cobabench.mazebm.ExprEvaluator" ; 
+		String CUT = "cobabench.mazebm.ExprEvaluator" ; 
 		//String CUT = "cobabench.mazebm.FloatStatistics" ;
 		//String CUT = "cobabench.mazebm.GraphTraversal" ;
 		//String CUT = "cobabench.mazebm.HeapSort" ;
@@ -65,13 +68,14 @@ public class CobaMaze {
 				      //+ sp + "-s=RPS" 
 				      + sp + "-s=COS"
 				      //+ sp + "-s=PS" + sp + "-u=DTUH"
-				      //+ sp + "-m=inorder"
+				      //+ sp + "-m=longestNumericPalindrome"
 				      //+ sp + "-s=BFS"
 				      
 				      + sp + "--minimalistic-suite=true"
-				      + sp + "-b=120"
+				      + sp + "-b=60"
 				      //+ sp + "-l=DEBUG" // log level
-				      //+ sp + "--max-depth=300"
+				      //+ sp + "--max-depth=100"
+				      + sp + "--max-array-size=15"
 				      + sp + "--constrain-FP-params-to-normal-numbers=true"
 				      //+ sp + "--surpress-regression-oracles=false"
 				      //+ sp + "--propagate-unexpected-exceptions=true"

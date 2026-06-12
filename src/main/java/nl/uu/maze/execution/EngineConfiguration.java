@@ -81,6 +81,13 @@ public class EngineConfiguration {
     public boolean minimalisticTestSuite = false ;
     
     /**
+     * The maximum size of an array to avoid memory issues trying to 
+     * reconstruct really large arrays. Smaller arrays are also less stressful
+     * for the back-end theorem prover. <p>Default: 20.
+     */
+     public int max_array_size = 20;
+    
+    /**
      * Get a fresh random generator, using {@link #globalRandomSeed} as the seed, if it is
      * defined. Else unseeded random generator is returned.
      */

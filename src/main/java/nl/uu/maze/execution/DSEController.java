@@ -254,7 +254,7 @@ public class DSEController {
         	int untargetdBranchCovered = CoverageTracker.getInstance().numberOfCoveredUntargetedBrances() ;
         	logger.info("statement-converage (by test): " + stmtCovered + "/" + stmtTargets) ;
         	logger.info("branch-converage    (by test): " + branchCovered + "/" + branchTargets
-        			+ ", #untargetd-branches covered: " + untargetdBranchCovered) ;
+        			+ ", #untargeted-branches covered: " + untargetdBranchCovered) ;
         	generator.writeToFile(outPath); 
             logger.info("#generated test-cases: {}", generator.getNumberOfGeneratedTestCases()) ;
             if (generator.getNumberOfViolationFound() > 0) {
@@ -427,12 +427,13 @@ public class DSEController {
     private Optional<SymbolicState> runSymbolicDriven(SymbolicSearchStrategy searchStrategy,
             JavaSootMethod targetMethod) {
         SymbolicState current;
+        
         while ((current = searchStrategy.next()) != null) {
         	
             // stop the search if the engine is configured to add only coverage-
             // contributing tests, and all coverage targets are already covered.
             if (EngineConfiguration.getInstance().minimalisticTestSuite
-            	&& CoverageTracker.getInstance().numberOfStillUnCoveredBranches() 
+            	&&  CoverageTracker.getInstance().numberOfStillUnCoveredBranches() 
             		+ CoverageTracker.getInstance().numberOfStillUnCoveredStmts() == 0) {
             	return concreteDriven ? Optional.of(current) : Optional.empty();
             }
@@ -583,11 +584,12 @@ public class DSEController {
                 // caught by the search strategy
                 
                 if (isNew) {
-                	// additionally, only add if the test would give new coverage
                 	var history = rerunToGetHistory(method, argMap) ;
                 	//System.out.println("history: " + history.getHistory()) ;
                 	boolean hasNewCov = CoverageTracker.getInstance().registerPathCoveredByTesting(history) ;
-                    if (hasNewCov || ! EngineConfiguration.getInstance().minimalisticTestSuite)
+                	// add the test case; however if MAZE is configured to only add
+                	// a test when contributes to new coverage, then we do so:
+                	if (hasNewCov || ! EngineConfiguration.getInstance().minimalisticTestSuite)
                     	// For the first concrete execution, argMap is populated by the concrete
                     	// executor
                     	generator.addMethodTestCase(method, ctorSoot, argMap);

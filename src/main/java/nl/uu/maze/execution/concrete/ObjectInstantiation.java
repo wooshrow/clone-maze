@@ -55,6 +55,13 @@ public class ObjectInstantiation {
         	Object[] enumconsts = clazz.getEnumConstants() ;
         	return new ExecutionResult(enumconsts[0], null, false);
         }
+        // for Boxed of primitives:
+        if (clazz.equals(Integer.class)) {
+        	return new ExecutionResult((Integer) 0, null, false) ;
+        }
+        if (clazz.equals(Long.class)) {
+        	return new ExecutionResult((Long) 0L, null, false) ;
+        }
         
         // Try to create an instance using one of the constructors
         Constructor<?>[] ctors = clazz.getDeclaredConstructors();

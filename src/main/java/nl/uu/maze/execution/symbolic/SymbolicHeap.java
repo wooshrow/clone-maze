@@ -5,6 +5,7 @@ import java.util.Map.Entry;
 
 import com.microsoft.z3.*;
 
+import nl.uu.maze.execution.EngineConfiguration;
 import nl.uu.maze.execution.symbolic.HeapObjects.*;
 import nl.uu.maze.execution.symbolic.PathConstraint.AliasConstraint;
 import nl.uu.maze.util.Z3ContextProvider;
@@ -21,11 +22,7 @@ import sootup.core.types.Type;
  * implementation relies on concrete values to be used as keys in a hash map.
  */
 public class SymbolicHeap {
-    /**
-     * The maximum length of an array to avoid memory issues trying to reconstruct
-     * really large arrays.
-     */
-    private static final int MAX_ARRAY_LENGTH = 100;
+    
     public static final Z3Sorts sorts = Z3Sorts.getInstance();
     private static final Context ctx() { return Z3ContextProvider.getContext(); }
 
@@ -304,7 +301,7 @@ public class SymbolicHeap {
         Expr<BitVecSort> size = ctx().mkConst(conKey + "_len", sorts.getIntSort());
         // Make sure array size is non-negative and does not exceed the max length
         state.addEngineConstraint(ctx().mkBVSGE(size, ctx().mkBV(0, sorts.getIntBitSize())));
-        state.addEngineConstraint(ctx().mkBVSLT(size, ctx().mkBV(MAX_ARRAY_LENGTH, sorts.getIntBitSize())));
+        state.addEngineConstraint(ctx().mkBVSLT(size, ctx().mkBV(EngineConfiguration.getInstance().max_array_size, sorts.getIntBitSize())));
 
         ArrayExpr<BitVecSort, ?> arr = ctx().mkArrayConst(conKey + "_elems", sorts.getIntSort(),
                 sorts.determineSort(elemType));
@@ -354,7 +351,7 @@ public class SymbolicHeap {
             Expr<BitVecSort> len = ctx().mkConst(conKey + "_len" + i, sorts.getIntSort());
             // Make sure array size is non-negative and does not exceed the max length
             state.addEngineConstraint(ctx().mkBVSGE(len, ctx().mkBV(0, sorts.getIntBitSize())));
-            state.addEngineConstraint(ctx().mkBVSLT(len, ctx().mkBV(MAX_ARRAY_LENGTH, sorts.getIntBitSize())));
+            state.addEngineConstraint(ctx().mkBVSLT(len, ctx().mkBV(EngineConfiguration.getInstance().max_array_size, sorts.getIntBitSize())));
 
             size = ctx().mkStore(size, ctx().mkBV(i, sorts.getIntBitSize()), len);
         }

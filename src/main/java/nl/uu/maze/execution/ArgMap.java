@@ -192,6 +192,9 @@ public class ArgMap {
             	if (type == Integer.class) {
             		refValue = (Integer) 9 ;
             	}
+            	else if (type == Long.class) {
+            		refValue = (Long) 9L ;
+            	}
             	else if (type.isArray()) {
                     Class<?> componentType = type.getComponentType();
                     Object array = Array.newInstance(componentType, 0);
@@ -207,33 +210,36 @@ public class ArgMap {
             Object obj = toJava(var, refValue, type);
             converted.put(key, obj);
         } else if (value instanceof ObjectInstance instance) {
-            // Convert ObjectInstance to Object
-            // Create a dummy instance that will be filled with the correct values
-            ExecutionResult result = ObjectInstantiation.createInstance(type);
-            if (result.isException()) {
-                logger.error("Failed to create instance of class: {}", type.getName());
-                return null;
-            }
-            Object obj = result.retval();
-        
-            // special case.
+        	// Convert ObjectInstance to Object
+        	
+        	// special case.
             // Classes like Integer and Long appears to have a field called "value" that
             // holds the primitive number it represents, but it is not a real field in the
             // sense that we can't set its value with field.set(v).
             // Handle this differently:
-        	if (obj instanceof Integer || obj instanceof Long) {
-        		if (instance.getFields().size() > 0) {
-        			// get the symbolic value-field of this int:
-        			Object fieldValue = instance.getFields().get("value").getValue() ;
-        			Object convertedValue = toJava(key + "_value", fieldValue, obj.getClass());
-                    obj = convertedValue ;
-        		}
-        		converted.put(key, obj);
+        	String instTyName = instance.type.getFullyQualifiedName() ;
+        	if (instTyName.equals("java.lang.Integer")) {
+        		Object fieldValue = instance.getFields().get("value").getValue() ;
+        		Object convertedValue = toJava(key + "_value", fieldValue, Integer.class);
+                converted.put(key, convertedValue);
+        		return converted.get(key);
+        	} else if (instTyName.equals("java.lang.Long")) {
+        		Object fieldValue = instance.getFields().get("value").getValue() ;
+        		Object convertedValue = toJava(key + "_value", fieldValue, Long.class);
+                converted.put(key, convertedValue);
         		return converted.get(key);
         	}
+        	
+            // Create a dummy instance that will be filled with the correct values
+        	ExecutionResult result = ObjectInstantiation.createInstance(type);
+            if (result.isException()) {
+                logger.error("Failed to create instance of class: {}", type.getName());
+                return null;
+            }
             
-            
-        	// non-special cases
+            Object obj = result.retval();
+        
+           	// non-special cases
         	
             // WP: to fix non-termination when trying to covert circular object structure,
             // we pre-add the obj to the coverted-list, before filling it its fields: 
