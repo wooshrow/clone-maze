@@ -97,6 +97,14 @@ public class MethodInvoker {
         if(IntegerLikeMethods.MODELof_Int_valueOf.executeModel(state, base, expr) != null) {
         	return Optional.empty();
         }
+        if(IntegerLikeMethods.MODELof_Long_longValue.executeModel(state, base, expr) != null) {
+        	// the execution by the model succeeded, we return empty, as if it was a concrete execution:
+        	return Optional.empty();
+        }
+        if(IntegerLikeMethods.MODELof_Long_valueOf.executeModel(state, base, expr) != null) {
+        	// the execution by the model succeeded, we return empty, as if it was a concrete execution:
+        	return Optional.empty();
+        }
                
         // For interface invoke expressions, try to resolve the method call to a
         // concrete class

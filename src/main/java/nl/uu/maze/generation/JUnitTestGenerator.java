@@ -700,8 +700,12 @@ public class JUnitTestGenerator {
         // Handle classes like Integer and Long as they do not actually have constructors
         // (deprecated).
         // Special handling:
-        if (clazz == Integer.class || clazz == Long.class) {
+        if (clazz == Integer.class) {
             methodBuilder.addStatement(clazz.getSimpleName() + " $L = 0", var);
+            return ;
+        }
+        if (clazz == Long.class) {
+            methodBuilder.addStatement(clazz.getSimpleName() + " $L = 0L", var);
             return ;
         }
         

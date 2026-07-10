@@ -39,15 +39,15 @@ public class CobaMaze {
 		//String CUT = "cobabench.mazebm.TriangleClassifier" ;
 		//String CUT = "cobabench.mazebm.AckermannPeter" ;
 		//String CUT = "cobabench.mazebm.BinarySearch" ;
-		//String CUT = "cobabench.mazebm.BinaryTree" ; // challenge
+		String CUT = "cobabench.mazebm.BinaryTree" ; // challenge
 		//String CUT = "cobabench.mazebm.BitwiseManipulator" ;
 		//String CUT = "cobabench.mazebm.IntUtils" ;
 		//String CUT = "cobabench.mazebm.StringUtils" ;
 		//String CUT = "cobabench.mazebm.BracketBalancer" ;
 		//String CUT = "cobabench.mazebm.ConnectedComponents" ;		
 		//String CUT = "cobabench.mazebm.ConvergingPaths" ;
-		//String CUT = "cobabench.mazebm.Dijkstra" ;
-		String CUT = "cobabench.mazebm.ExprEvaluator" ; 
+		//String CUT = "cobabench.mazebm.Dijkstra" ; // challenge
+		//String CUT = "cobabench.mazebm.ExprEvaluator" ; 
 		//String CUT = "cobabench.mazebm.FloatStatistics" ;
 		//String CUT = "cobabench.mazebm.GraphTraversal" ;
 		//String CUT = "cobabench.mazebm.HeapSort" ;
@@ -68,13 +68,13 @@ public class CobaMaze {
 				      //+ sp + "-s=RPS" 
 				      + sp + "-s=COS"
 				      //+ sp + "-s=PS" + sp + "-u=DTUH"
-				      //+ sp + "-m=longestNumericPalindrome"
+				      //+ sp + "-m=isComplexValidTreeHelper"
 				      //+ sp + "-s=BFS"
 				      
 				      + sp + "--minimalistic-suite=true"
 				      + sp + "-b=60"
 				      //+ sp + "-l=DEBUG" // log level
-				      //+ sp + "--max-depth=100"
+				      + sp + "--max-depth=100"
 				      + sp + "--max-array-size=15"
 				      + sp + "--constrain-FP-params-to-normal-numbers=true"
 				      //+ sp + "--surpress-regression-oracles=false"

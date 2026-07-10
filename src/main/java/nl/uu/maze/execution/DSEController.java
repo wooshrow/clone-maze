@@ -170,8 +170,7 @@ public class DSEController {
         if (this.instrumented == null)
         	  //this.instrumented = instrumenter.instrument(className) ;
   	  		  this.instrumented = instrumenter.instrument2(className) ;
-        
-
+        	
         JavaClassType classType = analyzer.getClassType(className);
         this.sootClass = analyzer.getSootClass(classType);
         this.clazz = analyzer.getJavaClass(classType);
