@@ -18,7 +18,7 @@ import nl.uu.maze.execution.ArgMap.ObjectRef;
 import nl.uu.maze.execution.MethodType;
 import nl.uu.maze.execution.concrete.*;
 import nl.uu.maze.execution.symbolic.HeapObjects.*;
-import nl.uu.maze.model.IntegerLikeMethods;
+import nl.uu.maze.model.NumberMethods;
 import nl.uu.maze.transform.JavaToZ3Transformer;
 import nl.uu.maze.transform.JimpleToJavaTransformer;
 import nl.uu.maze.transform.JimpleToZ3Transformer;
@@ -90,18 +90,18 @@ public class MethodInvoker {
         
         // Handle the case where the called method has a symbolic model. The model will then be
         // executed instead of the method. 
-        if(IntegerLikeMethods.MODELof_Int_intValue.executeModel(state, base, expr) != null) {
+        if(NumberMethods.MODELof_Int_intValue.executeModel(state, base, expr) != null) {
         	// the execution by the model succeeded, we return empty, as if it was a concrete execution:
         	return Optional.empty();
         }
-        if(IntegerLikeMethods.MODELof_Int_valueOf.executeModel(state, base, expr) != null) {
+        if(NumberMethods.MODELof_Int_valueOf.executeModel(state, base, expr) != null) {
         	return Optional.empty();
         }
-        if(IntegerLikeMethods.MODELof_Long_longValue.executeModel(state, base, expr) != null) {
+        if(NumberMethods.MODELof_Long_longValue.executeModel(state, base, expr) != null) {
         	// the execution by the model succeeded, we return empty, as if it was a concrete execution:
         	return Optional.empty();
         }
-        if(IntegerLikeMethods.MODELof_Long_valueOf.executeModel(state, base, expr) != null) {
+        if(NumberMethods.MODELof_Long_valueOf.executeModel(state, base, expr) != null) {
         	// the execution by the model succeeded, we return empty, as if it was a concrete execution:
         	return Optional.empty();
         }

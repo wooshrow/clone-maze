@@ -29,7 +29,6 @@ public class CUT_IntegerLong {
 			return null ;
 		if (x == 19)
 			return x ;
-		// cannot gen this yet. TODO
 		return 3L ;
 	}
 	
