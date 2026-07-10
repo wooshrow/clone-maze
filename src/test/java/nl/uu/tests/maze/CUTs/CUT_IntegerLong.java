@@ -12,32 +12,32 @@ public class CUT_IntegerLong {
 	public static Integer IntegerParam(Integer x) {
 		if (x == null)
 			return null ;
-		if (x < 9)
+		if (x == 9)
 			return x ;
 		return 1 ;
 	}
 	
 	public static Integer IntegerLocalCons(Integer x) {
 		Integer y = 11 ;
-		if (x+y < 9)
+		if (x+y == 10)
 			return x+y ;
-		return 1 ;
+		return 2 ;
 	}
 	
 	public static Long LongParam(Long x) {
 		if (x == null)
 			return null ;
-		if (x < 9)
+		if (x == 19)
 			return x ;
 		// cannot gen this yet. TODO
-		return 1L ;
+		return 3L ;
 	}
 	
 	public static Long LongLocalCons(Long x) {
 		Long y = 11L ;
-		if (x+y < 9)
+		if (x+y == 20)
 			return x+y ;
-		return 1L ;
+		return 4L ;
 	}
 	
 }

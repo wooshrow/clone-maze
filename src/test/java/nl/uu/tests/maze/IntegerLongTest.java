@@ -20,6 +20,10 @@ import nl.uu.maze.util.Z3ContextProvider;
 import nl.uu.tests.maze.CUTs.CUT_IntegerLong;
 import picocli.CommandLine;
 
+/**
+ * Test MAZE handling of Integer/Long parameters and also their valueOf 
+ * factory method.
+ */
 public class IntegerLongTest {
 	
 	String binClassesDir = "./target/test-classes" ;
@@ -48,7 +52,7 @@ public class IntegerLongTest {
 	
 	
 	@Test
-	void test_xxx_flow() throws IOException {
+	void test_IntegerLong_Param_and_Factory() throws IOException {
 
 		String argz =   "--classpath=" + binClassesDir
 				      + sp + "--classname=" + CUT.getName()
@@ -59,22 +63,35 @@ public class IntegerLongTest {
 				      ;
 	    int exitCode = new CommandLine(new MazeCLI()).execute(argz.split(" ") );
 	    
-	    //assertTrue(interceptor.anyMatch(msg -> msg.contains("#generated") && msg.contains("8"))) ;
+	    assertTrue(interceptor.anyMatch(msg -> msg.contains("#generated") && msg.contains("12"))) ;
 	    
 	    var outputFile = new TxtFileContent(Path.of(outputDir, CUT.getSimpleName() + "Test.java")) ;
 	    
 	    
-	    /*
 	    assertEquals(1, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
-	    		&& Preds.isAssertThrowsLine(ArrayIndexOutOfBoundsException.class,z))) ;
-
-	    // div-by-zero option is not enabled so this should give zero:
-	    assertEquals(0, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
-	    		&& Preds.isAssertThrowsLine(ArithmeticException.class,z))) ;
+	    		&& z.contains("expected = 19L"))) ;
 	    
-	    assertEquals(2, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
-	    		&& Preds.isAssertThrowsLine(NullPointerException.class,z))) ;
-*/
+	    assertEquals(1, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
+	    		&& z.contains("expected = 20L"))) ;
+	    
+	    assertEquals(1, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
+	    		&& z.contains("expected = 9;"))) ;
+	    
+	    assertEquals(1, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
+	    		&& z.contains("expected = 10;"))) ;
+	    
+	    assertEquals(1, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
+	    		&& z.contains("expected = 1;"))) ;
+
+	    assertEquals(1, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
+	    		&& z.contains("expected = 2;"))) ;
+
+	    assertEquals(1, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
+	    		&& z.contains("expected = 3L;"))) ;
+	    
+	    assertEquals(1, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
+	    		&& z.contains("expected = 4L;"))) ;
+
 	    
 	}
 
