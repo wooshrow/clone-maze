@@ -354,8 +354,8 @@ public class DSEController {
         }
     }
     
-    //int j = 0 ;
-    //int k = 0 ;
+    //int j = 1 ;
+    //int k = 1 ;
     
     /**
      * Generate a test case for the given method and symbolic state.
@@ -367,7 +367,9 @@ public class DSEController {
             if (argMap.isPresent()) {
             	//System.out.println("--- test " + k) ; k++ ;
             	//System.out.println(">>> " + state.getMethod().getName()) ;
+            	
             	InstructionHistory history = rerunToGetHistory(state.getMethod(), argMap.get()) ;
+            	//InstructionHistory history = new InstructionHistory() ;
             	//System.out.println("history: " + history.getHistory()) ;
             	var hasNewCov = CoverageTracker.getInstance().registerPathCoveredByTesting(history) ;
             	if (hasNewCov || state.isExceptionThrown() || ! EngineConfiguration.getInstance().minimalisticTestSuite) {
@@ -381,8 +383,7 @@ public class DSEController {
                 		}
                 	}
                 	*/  
-                	generator.addMethodTestCase(state.getMethod(), ctorSoot, argMap.get());
-                	
+                	generator.addMethodTestCase(state.getMethod(), ctorSoot, argMap.get());           	
                 }
             }
         } catch (Exception e) {
@@ -468,9 +469,14 @@ public class DSEController {
                 }
                 continue;
             }
-
+            
+            //System.out.println(">>> about to exec: " + current.getStmt()) ;
+            //System.out.println("** STATE: " + current) ;
+            
             // Symbolically execute the statement of the current symbolic state
-            List<SymbolicState> newStates = symbolic.step(current, concreteDriven);  
+            List<SymbolicState> newStates = symbolic.step(current, concreteDriven);   
+            
+            //System.out.println("** after, #next: " + newStates.size()) ;
             
             // For ctor states, check for final states from which we can switch to the
             // target method(s)

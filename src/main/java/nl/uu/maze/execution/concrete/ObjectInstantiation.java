@@ -127,12 +127,15 @@ public class ObjectInstantiation {
      * @return An array of arguments corresponding to the given parameters
      */
     public static Object[] generateArgs(Parameter[] params, MethodType methodType, ArgMap argMap) {
-        Object[] arguments = new Object[params.length];
+    	//System.out.println("--**> generateArgs, argmap: " + argMap) ;
+    	Object[] arguments = new Object[params.length];
         for (int i = 0; i < params.length; i++) {
-            // If the parameter is known, use the known value
-            String name = ArgMap.getSymbolicName(methodType, i);
+        	// If the parameter is known, use the known value
+            String name = ArgMap.getSymbolicName(methodType, i); 
+            //System.out.println("**  arg " + i + ", " + name) ;      
             if (argMap != null && argMap.containsKey(name)) {
-                arguments[i] = argMap.toJava(name, params[i].getType());
+            	arguments[i] = argMap.toJava(name, params[i].getType());
+                //System.out.println("**> arg " + i + ", " + name + ":" + arguments[i] + ", ty:" + params[i].getType()) ;
                 continue;
             }
 
@@ -149,7 +152,8 @@ public class ObjectInstantiation {
               //  arguments[i] = getDefault(params[i].getType());
             //}            
             arguments[i] = getDefault(params[i].getType());
-            
+            //System.out.println("****> arg " + i + ", " + name + ":" + arguments[i]) ;
+         
             // Add new argument to argMap
             if (argMap != null) {
                 argMap.set(name, arguments[i]);

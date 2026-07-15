@@ -17,18 +17,19 @@ import nl.uu.maze.analysis.JavaAnalyzer;
 import nl.uu.maze.execution.DSEController;
 import nl.uu.maze.main.cli.MazeCLI;
 import nl.uu.maze.util.Z3ContextProvider;
+import nl.uu.tests.maze.CUTs.CUT_BoxedPrimitiveUnconstrained;
 import nl.uu.tests.maze.CUTs.CUT_IntegerLong;
 import picocli.CommandLine;
 
 /**
- * Test MAZE handling of Integer/Long parameters and also their valueOf 
- * factory method.
+ * Test MAZE handling of Boxed-primitive types like Integer and Long parameters
+ * in the case where they are unconstrained.
  */
-public class IntegerLongTest {
+public class BoxPimtitives1_Test {
 	
 	String binClassesDir = "./target/test-classes" ;
 	String outputDir = "./tmp" ;	
-	Class CUT     = CUT_IntegerLong.class ;
+	Class CUT     = CUT_BoxedPrimitiveUnconstrained.class ;
 	String sp = " " ;
 	
 	LoggerInterceptor interceptor ;
@@ -52,7 +53,7 @@ public class IntegerLongTest {
 	
 	
 	@Test
-	void test_IntegerLong_Param_and_Factory() throws IOException {
+	void test0() throws IOException {
 
 		String argz =   "--classpath=" + binClassesDir
 				      + sp + "--classname=" + CUT.getName()
@@ -63,35 +64,39 @@ public class IntegerLongTest {
 				      ;
 	    int exitCode = new CommandLine(new MazeCLI()).execute(argz.split(" ") );
 	    
-	    assertTrue(interceptor.anyMatch(msg -> msg.contains("#generated") && msg.contains("12"))) ;
+	    assertTrue(interceptor.anyMatch(msg -> msg.contains("#generated") && msg.contains("11"))) ;
 	    
 	    var outputFile = new TxtFileContent(Path.of(outputDir, CUT.getSimpleName() + "Test.java")) ;
 	    
+	    assertEquals(1, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
+	    		&& z.contains("marg0 = 2;"))) ;
 	    
 	    assertEquals(1, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
-	    		&& z.contains("expected = 19L"))) ;
+	    		&& z.contains("expected = 14;"))) ;
 	    
 	    assertEquals(1, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
-	    		&& z.contains("expected = 20L"))) ;
+	    		&& z.contains("marg0 = 2L;"))) ;
 	    
 	    assertEquals(1, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
-	    		&& z.contains("expected = 9;"))) ;
+	    		&& z.contains("expected = 14L"))) ;
 	    
 	    assertEquals(1, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
-	    		&& z.contains("expected = 10;"))) ;
+	    		&& z.contains("marg0 = 2.0F;"))) ;
 	    
 	    assertEquals(1, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
-	    		&& z.contains("expected = 1;"))) ;
-
-	    assertEquals(1, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
-	    		&& z.contains("expected = 2;"))) ;
-
-	    assertEquals(1, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
-	    		&& z.contains("expected = 3L;"))) ;
+	    		&& z.contains("expected = 14.1F"))) ;
 	    
 	    assertEquals(1, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
-	    		&& z.contains("expected = 4L;"))) ;
-
+	    		&& z.contains("marg0 = 2.0;"))) ;
+	    
+	    assertEquals(1, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
+	    		&& z.contains("expected = 14.5;"))) ;
+	    
+	    assertEquals(1, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
+	    		&& z.contains("expected = true"))) ;
+	    
+	    assertEquals(1, outputFile.countMatchingLines(z -> ! Preds.isCommentLine(z) 
+	    		&& z.contains("expected = false"))) ;
 	    
 	}
 

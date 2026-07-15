@@ -105,6 +105,7 @@ public class SymbolicExecutor {
             // If an exception is thrown, set the state as exceptional and return it
             // That way, a test case is generated for the path up to this point, even if we
             // didn't finish exploring the path
+        	//System.out.println("### STATE: " + state) ;
             logger.error("Exception thrown during symbolic execution: {}", e.getMessage());
             //logger.error("Exception stack trace: ", e);
             state.setExceptionThrown();

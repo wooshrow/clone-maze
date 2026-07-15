@@ -18,7 +18,7 @@ import nl.uu.maze.execution.ArgMap.ObjectRef;
 import nl.uu.maze.execution.MethodType;
 import nl.uu.maze.execution.concrete.*;
 import nl.uu.maze.execution.symbolic.HeapObjects.*;
-import nl.uu.maze.model.NumberMethods;
+import nl.uu.maze.model.BoxedPrimitivesMethods;
 import nl.uu.maze.transform.JavaToZ3Transformer;
 import nl.uu.maze.transform.JimpleToJavaTransformer;
 import nl.uu.maze.transform.JimpleToZ3Transformer;
@@ -81,29 +81,46 @@ public class MethodInvoker {
         Local base = expr instanceof AbstractInstanceInvokeExpr ? ((AbstractInstanceInvokeExpr) expr).getBase() : null;
         MethodSignature methodSig = expr.getMethodSignature();
 
+        // Handle the case where the called method has a symbolic model. The model will then be
+        // executed instead of the method. 
+        if(BoxedPrimitivesMethods.MODELof_Int_intValue.executeModel(state, base, expr) != null) {
+        	// the execution by the model succeeded, we return empty, as if it was a concrete execution:
+        	return Optional.empty();
+        }
+        if(BoxedPrimitivesMethods.MODELof_Int_valueOf.executeModel(state, base, expr) != null) {
+        	// the execution by the model succeeded, we return empty, as if it was a concrete execution:
+        	return Optional.empty();
+        }
+        if(BoxedPrimitivesMethods.MODELof_Long_longValue.executeModel(state, base, expr) != null) {
+        	return Optional.empty();
+        }
+        if(BoxedPrimitivesMethods.MODELof_Long_valueOf.executeModel(state, base, expr) != null) {
+        	return Optional.empty();
+        }
+        if(BoxedPrimitivesMethods.MODELof_Float_floatValue.executeModel(state, base, expr) != null) {
+        	return Optional.empty();
+        }
+        if(BoxedPrimitivesMethods.MODELof_Float_valueOf.executeModel(state, base, expr) != null) {
+        	return Optional.empty();
+        }
+        if(BoxedPrimitivesMethods.MODELof_Double_doubleValue.executeModel(state, base, expr) != null) {
+        	return Optional.empty();
+        }
+        if(BoxedPrimitivesMethods.MODELof_Double_valueOf.executeModel(state, base, expr) != null) {
+        	return Optional.empty();
+        }
+        if(BoxedPrimitivesMethods.MODELof_Boolean_booleanValue.executeModel(state, base, expr) != null) {
+        	return Optional.empty();
+        }
+        if(BoxedPrimitivesMethods.MODELof_Boolean_valueOf.executeModel(state, base, expr) != null) {
+        	return Optional.empty();
+        }
+        
         // If replaying a trace, do not symbolically execute java standard library
         // methods, because we do not have trace entries for those (not instrumented)
         if (replay && isStandardLibraryMethod(methodSig)) {
             executeConcrete(state, expr, base, storeResult);
             return Optional.empty();
-        }
-        
-        // Handle the case where the called method has a symbolic model. The model will then be
-        // executed instead of the method. 
-        if(NumberMethods.MODELof_Int_intValue.executeModel(state, base, expr) != null) {
-        	// the execution by the model succeeded, we return empty, as if it was a concrete execution:
-        	return Optional.empty();
-        }
-        if(NumberMethods.MODELof_Int_valueOf.executeModel(state, base, expr) != null) {
-        	return Optional.empty();
-        }
-        if(NumberMethods.MODELof_Long_longValue.executeModel(state, base, expr) != null) {
-        	// the execution by the model succeeded, we return empty, as if it was a concrete execution:
-        	return Optional.empty();
-        }
-        if(NumberMethods.MODELof_Long_valueOf.executeModel(state, base, expr) != null) {
-        	// the execution by the model succeeded, we return empty, as if it was a concrete execution:
-        	return Optional.empty();
         }
                
         // For interface invoke expressions, try to resolve the method call to a
@@ -183,6 +200,9 @@ public class MethodInvoker {
 
     /** Execute a method call concretely. */
     private void executeConcrete(SymbolicState state, AbstractInvokeExpr expr, Local base, boolean storeResult) {
+    	
+    	System.out.println(">>> concrete invoke " + expr) ;
+    	
         MethodSignature methodSig = expr.getMethodSignature();
         boolean isCtor = methodSig.getName().equals("<init>");
         Object executable = getExecutable(methodSig, isCtor);
@@ -212,6 +232,7 @@ public class MethodInvoker {
             if (!isCtor && base != null) {
                 try {
                     Class<?> clazz = analyzer.getJavaClass(heapObj.getType());
+                    System.out.println(">>> base: " + base.getName()) ;
                     instance = argMap.toJava(base.getName(), clazz);
                     if (instance == null) {
                         throw new UnsupportedOperationException(

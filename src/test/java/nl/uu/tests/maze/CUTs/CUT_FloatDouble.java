@@ -12,29 +12,31 @@ public class CUT_FloatDouble {
 	public static Float FloatParam(Float x) {
 		if (x == null)
 			return null ;
-		if (x == 9.9)
+		if (x == 9.9f)
 			return x ;
 		return 1.1f ;
 	}
 	
+	
 	public static Float FloatLocalCons(Float x) {
 		Float y = 11f ;
-		if (x+y == 10.9)
+		if (x+y == 10.9f)
 			return x+y ;
 		return 2.1f ;
 	}
 	
+	
 	public static Double DoubleParam(Double x) {
 		if (x == null)
 			return null ;
-		if (x == 19.7)
+		if (x == 19.7d)
 			return x ;
 		return 3.7d ;
 	}
 	
 	public static Double LongLocalCons(Double x) {
 		Double y = 11d ;
-		if (x+y == 20.7)
+		if (x+y == 20.7d)
 			return x+y ;
 		return 4.7d ;
 	}

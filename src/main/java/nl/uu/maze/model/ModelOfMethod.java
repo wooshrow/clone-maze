@@ -6,6 +6,7 @@ import java.util.Optional;
 import nl.uu.maze.execution.symbolic.SymbolicState;
 import sootup.core.jimple.basic.Local;
 import sootup.core.jimple.common.expr.AbstractInvokeExpr;
+import sootup.core.signatures.MethodSignature;
 
 /**
  * A common interface for symbolic models of methods. When symbolically executing a call
@@ -21,6 +22,15 @@ public abstract class ModelOfMethod {
 	 * The method that is being modeled by this Model. 
 	 */
 	public Method method ;
+	
+	/**
+	 * Check if the given soot-method-signature matches to the method that
+	 * this being modeled by this model. If yes, then the model can be
+	 * executed rather than symbolically executing the method.
+	 * 
+	 * <p>True is we have a match, and else false.
+	 */
+	public abstract boolean match(MethodSignature sootSignature) ;
 	
 	/**
 	 * This method executeModel models the behavior of {@link #method} by applying
