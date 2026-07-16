@@ -27,7 +27,7 @@ public class CobaMaze {
 		//String CUT = "cobabench.BinaryTreeY" ;
 		// String CUT = "cobabench.CobaParamOtherClasses" ;
 		//String CUT = "cobabench.RBTY" ;
-		String CUT = "cobabench.CobbaInnerClasses" ;
+		//String CUT = "cobabench.CobbaInnerClasses" ;
 		//String CUT = "cobabench.CobaBinaryTree" ;
 		// String CUT = "cobabench.CobaIntegerParam" ;
 		//String CUT = "cobabench.CobaArrayLength" ;
@@ -40,14 +40,14 @@ public class CobaMaze {
 		//String CUT = "cobabench.mazebm.TriangleClassifier" ;
 		//String CUT = "cobabench.mazebm.AckermannPeter" ;
 		//String CUT = "cobabench.mazebm.BinarySearch" ;
-		// String CUT = "cobabench.mazebm.BinaryTree" ; // challenge
+		//String CUT = "cobabench.mazebm.BinaryTree" ; // challenge
 		//String CUT = "cobabench.mazebm.BitwiseManipulator" ;
 		//String CUT = "cobabench.mazebm.IntUtils" ;
 		//String CUT = "cobabench.mazebm.StringUtils" ;
 		//String CUT = "cobabench.mazebm.BracketBalancer" ;
 		//String CUT = "cobabench.mazebm.ConnectedComponents" ;		
 		//String CUT = "cobabench.mazebm.ConvergingPaths" ;
-		//String CUT = "cobabench.mazebm.Dijkstra" ; // challenge
+		String CUT = "cobabench.mazebm.Dijkstra" ; // challenge
 		//String CUT = "cobabench.mazebm.ExprEvaluator" ; 
 		//String CUT = "cobabench.mazebm.FloatStatistics" ;
 		//String CUT = "cobabench.mazebm.GraphTraversal" ;
@@ -75,8 +75,8 @@ public class CobaMaze {
 				      + sp + "--minimalistic-suite=true"
 				      + sp + "-b=60"
 				      //+ sp + "-l=DEBUG" // log level
-				      + sp + "--max-depth=100"
-				      + sp + "--max-array-size=15"
+				      //+ sp + "--max-depth=100"
+				      + sp + "--max-array-size=20"
 				      + sp + "--constrain-FP-params-to-normal-numbers=true"
 				      //+ sp + "--surpress-regression-oracles=false"
 				      //+ sp + "--propagate-unexpected-exceptions=true"

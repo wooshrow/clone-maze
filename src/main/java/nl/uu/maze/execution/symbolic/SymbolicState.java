@@ -122,7 +122,6 @@ public class SymbolicState implements SearchTarget {
         this.paramTypes = new HashMap<>();
         this.newCoverageDepths = new ArrayList<>();
         this.branchHistory = new BranchHistory() ;
-        this.branchHistory.addMethodEntry(method);
     }
 
     /*
@@ -192,9 +191,6 @@ public class SymbolicState implements SearchTarget {
         this.method = method;
         this.cfg = cfg;
         setStmt(cfg.getStartingStmt());
-        // setMethod means switching from constructor exec to method exec, we record
-        // entering the method:
-        branchHistory.addMethodEntry(method);
     }
 
     public StmtGraph<?> getCFG() {
@@ -399,15 +395,6 @@ public class SymbolicState implements SearchTarget {
         return branchHistory.getBranchHistory();
     }
     
-    /**
-     * Get the history of passed branches, leading to this state. The history is
-     * represented as the underlying instance of BranchHistory, which contains
-     * a bit more information than just a list of branch-hashes.
-     */
-    public BranchHistory getBranchHistory2() {
-    	return branchHistory ;
-    }
-
     public void setIteration(int iteration) {
         this.iteration = iteration;
     }

@@ -137,59 +137,6 @@ public class CoverageTracker {
         return coveredStmts_byExpl.contains(stmt);
     }
     
-    /**
-     * Register statements executed during a test. A "test" here means a
-     * (feasible) symbolic execution leading to a certain end-state (e.g
-     * the state at the end of a method, or a state that throws an uncaught
-     * exception). This end-state is given as input to this method. It also
-     * contains information of branches passed during the execution that leads
-     * to that state. From this information, we can reconstruct the sequence
-     * of statements/instructions passed along the way.
-     * 
-     * <p>More precisely, the method register the statements and branches passed
-     * for the purpose of coverage tracking.
-     * 
-     * <p>The method returns true if the test gives new coverage (either statement
-     * of branch). 
-     */
-    public boolean registerPathCoveredByTestingxxx(SymbolicState endstate) {
-    	boolean hasNewCoverage = false ; 
-    	// register visited statements:
-		List<Stmt> visitedStmts = BranchHistoryUtil.getPathFromBranchHistory(
-				endstate.getBranchHistory2(),
-				endstate.getStmt()) ;
-		
-    	for (Stmt S : visitedStmts) {
-    			//System.out.println(">>> visited " + endstate.getMethod().getName() + ": " +  S) ;
-    		boolean changed = stillOpenStmtTargets.remove(S) ;
-    		if (changed) hasNewCoverage = true ;
-    	}
-		// register visited branches:
-		for (Integer b : endstate.getBranchHistory()) {
-			//System.out.println(">>> visit branch " + b) ;
-			boolean changed = stillOpenBranchTargets.remove(b) ;
-			if (changed) hasNewCoverage = true ;
-		}
-
-		// if the the state is exceptional, we'll consider it to produce new-coverage 
-		// (even if it does not register new stmt or branch):
-		hasNewCoverage = hasNewCoverage || endstate.isExceptionThrown() ;
-		
-		/*
-		if (hasNewCoverage) {
-			System.out.println(">>> recording path: " + visitedStmts) ;
-			System.out.println("    branches-list: " + BranchHistoryUtil.getStmtStmtListOfBranches(endstate.getBranchHistory2())) ;
-			System.out.println("    path-constraints: " + endstate.getPathConstraints()) ;
-			System.out.println("    engine-constraints: " + endstate.getEngineConstraints()) ;
-		}
-		*/
-		
-		//System.out.println(">>> test-path, has new coverage:" + hasNewCoverage + ", exceptional:" + endstate.isExceptionThrown()) ;
-		//System.out.println(">>> test-path: " + visitedStmts + ", has new coverage:" + hasNewCoverage + ", exceptional:" + endstate.isExceptionThrown()) ;
-		//System.out.println(">>> branch-history: " + endstate.getBranchHistory2()) ;
-		
-    	return hasNewCoverage ;
-    }
     
     public boolean registerPathCoveredByTesting(InstructionHistory ihist) {
     	

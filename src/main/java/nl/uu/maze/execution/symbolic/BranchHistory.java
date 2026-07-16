@@ -56,11 +56,6 @@ public class BranchHistory {
 		branchhistory.add(branchHash) ;
 	}
 	
-	public void addMethodEntry(JavaSootMethod method) {
-		MethodEntryItem entry = new MethodEntryItem(method) ;
-		entry.numberOfBrachesBeforeThisEntry = branchhistory.size() ;
-		methodEntryHistory.add(entry) ;
-	}
 	
 	/**
 	 * Return the recorded branch history, as a list of branches.
