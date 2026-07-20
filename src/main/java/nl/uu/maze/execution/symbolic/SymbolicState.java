@@ -11,6 +11,7 @@ import com.microsoft.z3.*;
 
 import nl.uu.maze.analysis.JavaAnalyzer;
 import nl.uu.maze.execution.MethodType;
+import nl.uu.maze.util.BranchStmtUtil;
 import nl.uu.maze.util.Pair;
 import nl.uu.maze.util.Z3ContextProvider;
 import nl.uu.maze.util.Z3Sorts;
@@ -87,7 +88,7 @@ public class SymbolicState implements SearchTarget {
      * statement and the index of the branch that was taken) were taken along the
      * path leading to this state.
      */
-    private final BranchHistory branchHistory;
+    private final List<Integer> branchHistory;
     /**
      * The iteration at which this state was added to the search strategy.
      */
@@ -121,7 +122,7 @@ public class SymbolicState implements SearchTarget {
         this.engineConstraints = new ArrayList<>();
         this.paramTypes = new HashMap<>();
         this.newCoverageDepths = new ArrayList<>();
-        this.branchHistory = new BranchHistory() ;
+        this.branchHistory = new ArrayList<>() ;
     }
 
     /*
@@ -147,7 +148,7 @@ public class SymbolicState implements SearchTarget {
         // original here
         this.caller = state.caller;
         this.newCoverageDepths = new ArrayList<>(state.newCoverageDepths);
-        this.branchHistory = new BranchHistory(state.branchHistory);
+        this.branchHistory = new ArrayList<>(state.branchHistory) ;
 
         this.isCtorState = state.isCtorState;
         this.isFinalState = state.isFinalState;
@@ -379,8 +380,7 @@ public class SymbolicState implements SearchTarget {
      * branch taken.
      */
     public void recordBranch(Stmt branchStmt, int branchIndex) {
-        int hash = branchStmt.hashCode() + 31 * branchIndex;
-        branchHistory.addBranch(hash); 
+        branchHistory.add(BranchStmtUtil.getBranchHash(branchStmt, branchIndex) ); 
     }
 
     public List<Integer> getNewCoverageDepths() {
@@ -392,7 +392,7 @@ public class SymbolicState implements SearchTarget {
      * represented by its hash value.
      */
     public List<Integer> getBranchHistory() {
-        return branchHistory.getBranchHistory();
+        return this.branchHistory ;
     }
     
     public void setIteration(int iteration) {

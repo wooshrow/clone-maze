@@ -16,12 +16,10 @@ import java.util.List;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Logger;
 
-/**
- * This is contributed by MartV0, https://github.com/MartV0/maze
- */
-public class BranchHistoryUtil {
+
+public class BranchStmtUtil {
     
-    /** Convert a program path into branch history */
+    /** Convert a program path into branch history, represented as a list hashes of the branches. */
     public static ArrayList<Integer> convertPathToBranchHistory(List<Stmt> path, StmtGraph<?> cfg){
         var history = new ArrayList<Integer>();
         for (int i = 0; i < path.size(); i++) {
@@ -35,29 +33,16 @@ public class BranchHistoryUtil {
         }
         return history;
     }
-
-    public static List<Pair<Stmt,Stmt>> getStmtStmtListOfBranches(BranchHistory branchhistory) {
-    	var h = branchhistory.getContexedBranchHistory() ;
-    	List<Pair<Stmt,Stmt>> z = new LinkedList<>() ;
-    	StmtGraph cfg = null ;
-    	for (var bi : h) {
-    		switch(bi) {
-    		  case MethodEntryItem mei -> cfg = mei.method.getBody().getStmtGraph() ;
-    		  case BranchItem b -> {
-    			 var br = findBranch(cfg,b.branchHash) ;
-    			 z.add(br) ;
-    		  }
-    		  default -> { }
-    		}
-    	}
-    	return z ;
-    }
     
     /** Converts a branch taken to an integer representation */
     public static int getBranchHash(Stmt branchStmt, int branchIndex) {
         return branchStmt.hashCode() + 31 * branchIndex;
     }
     
+    /**
+     * Given a pair of stmts that forms a transition, return the hash representing
+     * the transition.
+     */
     @SuppressWarnings("unchecked")
 	public static Integer getBranchHash(StmtGraph cfg, Stmt stmt, Stmt nextStmt, boolean onlyBranchStmt) {
     	List<Stmt> successors = cfg.getAllSuccessors(stmt) ;
@@ -94,15 +79,18 @@ public class BranchHistoryUtil {
         return null ;
     }
     
+    /**
+     * Get the stmt-stmt transition pair from a given branch-hash.
+     */
     @SuppressWarnings({ "rawtypes", "unchecked" })
-	static Pair<Stmt,Stmt> findBranch(StmtGraph cfg, int brachHash) {
+	static Pair<Stmt,Stmt> findBranch(StmtGraph cfg, int branchHash) {
     	List<Stmt> stmts = cfg.getStmts() ;
     	for(Stmt S : stmts) {
     		if (S instanceof JIfStmt || S instanceof JSwitchStmt) {
     			List<Stmt> successors = cfg.getAllSuccessors(S) ;
     			int N = successors.size() ;
     			for (int i = 0; i < N; i++) {
-    	            if (getBranchHash(S,i) == brachHash) {
+    	            if (getBranchHash(S,i) == branchHash) {
     	            	Pair<Stmt,Stmt> branch = new Pair<>(S, successors.get(i)) ;
      	                return branch ;
     	            }

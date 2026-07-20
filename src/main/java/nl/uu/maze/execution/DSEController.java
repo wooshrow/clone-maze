@@ -32,7 +32,8 @@ import nl.uu.maze.search.strategy.ConcreteSearchStrategy;
 import nl.uu.maze.search.strategy.DFS;
 import nl.uu.maze.search.strategy.SearchStrategy;
 import nl.uu.maze.search.strategy.SymbolicSearchStrategy;
-import nl.uu.maze.util.BranchHistoryUtil;
+import nl.uu.maze.util.BranchStmtUtil;
+import nl.uu.maze.util.HighLevelCFG;
 import nl.uu.maze.util.Pair;
 import sootup.core.graph.StmtGraph;
 import sootup.core.jimple.common.stmt.Stmt;
@@ -82,6 +83,7 @@ public class DSEController {
      * as a previous execution.
      */
     private Map<Integer, SymbolicState> initStates;
+   
 
     /**
      * Create a new execution controller.
@@ -203,7 +205,16 @@ public class DSEController {
             }
             CoverageTracker.getInstance().addTargets(method) ;
             logger.info("Adding " + method.getName() + " as a target, #stmts:" + method.getBody().getStmts().size()) ;
-            //System.out.println(">>> " + method.getName() + "\n" + method.getBody()) ;
+            System.out.println(">>> " + method.getName() + "\n" + method.getBody()) ;
+            debugPrintCFGs(method) ;
+            var HCFG = new HighLevelCFG(method) ;
+            System.out.println(">>>> HCFG: " + HCFG) ;
+            HCFG.saveAsDot(null) ;
+            var targetPaths = HCFG.getMaxElementaryPaths(-1) ;
+            System.out.println(">>>> #targets = " + targetPaths.size()) ;
+            for (var t : targetPaths) {
+            	System.out.println("   * target " + t) ;
+            }
         }
 
         if (staticMuts.isEmpty() && nonStaticMuts.isEmpty()) {
@@ -699,4 +710,40 @@ public class DSEController {
         }
         return history ;
     }
-}
+    
+    /**
+     * Just for debugging. "Printing" the cfg of a method. That is,
+     * for every stmt in the method's body, the will print its successors.
+     * It will also indicate if the stmt is the start or exit node of the
+     * cfg.
+     */
+    void debugPrintCFGs(JavaSootMethod method) {
+    	StmtGraph cfg = method.getBody().getStmtGraph() ;
+    	System.out.println(">>> CFG of " + method.getName()) ;
+    	int k = 1 ;
+    	for (Stmt stmt : method.getBody().getStmts()) {
+    		var sucs = cfg.successors(stmt) ;
+    		var esucs = cfg.exceptionalSuccessors(stmt) ;
+    		System.out.print("  " + k + ": " + stmt 
+    				+ ", #sucs=" + sucs.size() 
+    				+ ", #exceptional-sucs=" + esucs.size()) ;
+    		if (stmt == cfg.getStartingStmt()) 
+    			System.out.print(" [START]") ;
+    		boolean handlersHead = stmt != cfg.getStartingStmt() 
+    				&& cfg.getEntrypoints().contains(stmt) ;
+    		if (handlersHead)
+    			System.out.println(" [HANDLER HEAD]") ;
+    		if (sucs.size() == 0)
+    			System.out.println(" [EXIT]") ;
+    		System.out.println("") ;
+    		
+    		for (var z : sucs) {
+    			System.out.println("     --> " + z) ;
+    		}
+    		for (var z : esucs.values()) {
+    			System.out.println("     xx> " + z) ;
+    		}
+    		k++ ;
+    	}
+    }
+ }

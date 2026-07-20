@@ -32,7 +32,7 @@ public class CobaMaze {
 		// String CUT = "cobabench.CobaIntegerParam" ;
 		//String CUT = "cobabench.CobaArrayLength" ;
 		//String CUT = "cobabench.CobaSettingCUTfields" ;
-		
+		String CUT = "cobabench.CobaExceptionHandlers" ;
 		
 		
 		
@@ -47,7 +47,7 @@ public class CobaMaze {
 		//String CUT = "cobabench.mazebm.BracketBalancer" ;
 		//String CUT = "cobabench.mazebm.ConnectedComponents" ;		
 		//String CUT = "cobabench.mazebm.ConvergingPaths" ;
-		String CUT = "cobabench.mazebm.Dijkstra" ; // challenge
+		// String CUT = "cobabench.mazebm.Dijkstra" ; // challenge
 		//String CUT = "cobabench.mazebm.ExprEvaluator" ; 
 		//String CUT = "cobabench.mazebm.FloatStatistics" ;
 		//String CUT = "cobabench.mazebm.GraphTraversal" ;

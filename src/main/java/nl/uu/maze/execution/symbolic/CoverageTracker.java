@@ -6,7 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import nl.uu.maze.execution.DSEController;
-import nl.uu.maze.util.BranchHistoryUtil;
+import nl.uu.maze.util.BranchStmtUtil;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -99,7 +99,7 @@ public class CoverageTracker {
     	for (Stmt S : stmts) {
     		var succs = cfg.getAllSuccessors(S) ;
     		for (var nextS : succs) {
-    			Integer hash = BranchHistoryUtil.getBranchHash(cfg,S,nextS,true) ; // only branching instructions
+    			Integer hash = BranchStmtUtil.getBranchHash(cfg,S,nextS,true) ; // only branching instructions
     			if (hash != null) {
     				targetBranches.add(hash) ;
         			stillOpenBranchTargets.add(hash) ;
@@ -156,7 +156,7 @@ public class CoverageTracker {
     		if (changed) hasNewCoverage = true ;
     		
     		if (prevStmt != null) {
-    			Integer branch = BranchHistoryUtil.getBranchHash(currentCfg,prevStmt,stmt,false) ;
+    			Integer branch = BranchStmtUtil.getBranchHash(currentCfg,prevStmt,stmt,false) ;
     			if (branch != null) {
     				changed = stillOpenBranchTargets.remove(branch) ;
     				if (changed) hasNewCoverage = true ;
