@@ -86,12 +86,42 @@ public class EngineConfiguration {
      * for the back-end theorem prover. <p>Default: 20.
      */
      public int max_array_size = 20;
+     
+     
+     /**
+      * if the value is at least 2, the engine will track the coverage over elementary 
+      * paths of length 2 as coverage targets. The length of a path is  here defined
+      * as the number of edges in the path. Only intra-method paths are considered
+      * as targets. That is, paths that do not cross between method-boundary.
+      * The considered paths are paths at the high-level CFG of the method under
+      * tests in the CUT. So, these are paths at the node-level, and not paths
+      * at the instruction/stmt-level.
+      * 
+      * <p>A target path of length two describes an edge-pair. A target path of length
+      * 1 corresponds to a branch in a conditional. Branches are already targeted by
+      * the MAZE engine.
+      * 
+      * <p>When the option {@link #minimalisticTestSuite} is enabled, and
+      * the value of enablePathCoverage is k >= 2, whenever a test is found
+      * that covers target path of length k, which has not been covered before,
+      * the test will be actually be generated as aJUnit test-method. As there are
+      * usually more paths of length k than the number of branches, this option 
+      * may thus cause more tests to be generated (though on the other hand, it is
+      * the also more thorough).
+      * 
+      * <p>If {@link #minimalisticTestSuite}, then it matters less, as the engine
+      * will convert any completed path to a test, regardless whether it gives
+      * new coverage or not.
+      * 
+      * <p>Default: 1.
+      */
+     public int pathLengthCoverage = 1 ;
     
     /**
      * Get a fresh random generator, using {@link #globalRandomSeed} as the seed, if it is
      * defined. Else unseeded random generator is returned.
      */
-    public Random getRandomGenerator() {
+    public Random mkNewRandomGenerator() {
     	if (globalRandomSeed == null)
     		return new Random() ;
     	else 

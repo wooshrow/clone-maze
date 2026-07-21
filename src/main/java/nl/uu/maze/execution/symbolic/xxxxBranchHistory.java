@@ -14,7 +14,7 @@ import sootup.java.core.JavaSootMethod;
  * The data structure also track when a method is entered, so we can infer back
  * to which method given tracked branches belong to.
  */
-public class BranchHistory {
+public class xxxxBranchHistory {
 	
 	static public class BranchHistoryItem { }
 	
@@ -40,9 +40,9 @@ public class BranchHistory {
 	private List<Integer> branchhistory = new ArrayList<>() ;
 	private List<MethodEntryItem> methodEntryHistory = new LinkedList<>() ;
 	
-	public BranchHistory() {}
+	public xxxxBranchHistory() {}
 	
-	public BranchHistory(BranchHistory h) {
+	public xxxxBranchHistory(xxxxBranchHistory h) {
 		this.branchhistory = new ArrayList<>(h.branchhistory) ;
 		this.methodEntryHistory = new LinkedList<>(h.methodEntryHistory) ;
 	}

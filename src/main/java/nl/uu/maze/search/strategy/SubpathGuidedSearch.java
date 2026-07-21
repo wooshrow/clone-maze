@@ -19,6 +19,8 @@ import sootup.core.jimple.javabytecode.stmt.JSwitchStmt;
  * regions.
  */
 public class SubpathGuidedSearch<T extends SearchTarget> extends SearchStrategy<T> {
+	
+	// length 2 over branches would be the same as edge-pair
     private static final int SUBPATH_LENGTH = 2; // Length of the subpath to consider
 
     private final Map<Integer, Integer> subpathCounts = new HashMap<>();

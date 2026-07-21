@@ -3,6 +3,7 @@ package nl.uu.maze.execution.symbolic;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,17 +40,18 @@ public class SymbolicExecutor {
     private final MethodInvoker methodInvoker;
     private final SymbolicStateValidator validator;
     private final JimpleToZ3Transformer jimpleToZ3 = new JimpleToZ3Transformer();
-    private final boolean trackCoverage;
-    private final boolean trackBranchHistory;
+    
+    // disabling these; we will always track them:
+    //private final boolean trackCoverage;
+    //private final boolean trackBranchHistory;
+    
     private JavaAnalyzer analyzer ;
-
+    
     public SymbolicExecutor(ConcreteExecutor executor, SymbolicStateValidator validator,
-            JavaAnalyzer analyzer, boolean trackCoverage, boolean trackBranchHistory) {
+            JavaAnalyzer analyzer) {
         this.methodInvoker = new MethodInvoker(executor, validator, analyzer);
         this.validator = validator;
         this.analyzer = analyzer ;
-        this.trackCoverage = trackCoverage;
-        this.trackBranchHistory = trackBranchHistory;
     }
 
     /**
@@ -75,8 +77,10 @@ public class SymbolicExecutor {
 
         try {
         	
-        	if (trackCoverage)
-                state.recordStmtCoverageByExpl();
+        	state.recordStmtCoverageByExpl();
+        	state.recordIfExitStmt(stmt);
+        	state.recordIfExceptiomHead(stmt);
+        	
             switch (stmt) {
                 case JIfStmt jIfStmt -> {
                     return handleIfStmt(jIfStmt, state, replay);
@@ -169,8 +173,7 @@ public class SymbolicExecutor {
             state.addPathConstraint(branchIndex == 0 ? Z3Utils.negate(cond) : cond);
             state.setStmt(succs.get(branchIndex));
             newStates.add(state);
-            if (trackBranchHistory)
-                state.recordBranch(stmt, branchIndex);
+            state.recordBranch(stmt, branchIndex);
         }
         // Otherwise, follow both branches
         else {
@@ -189,11 +192,10 @@ public class SymbolicExecutor {
             if (validator.isSatisfiable(falseState))
                 newStates.add(falseState);
 
-            if (trackBranchHistory) {
-                // Record the branch taken for both states
-                falseState.recordBranch(stmt, 0);
-                state.recordBranch(stmt, 1);
-            }
+            // Record the branch taken for both states
+            falseState.recordBranch(stmt, 0);
+            state.recordBranch(stmt, 1);
+            
         }
 
         return newStates;
@@ -236,8 +238,7 @@ public class SymbolicExecutor {
             state.addPathConstraint(constraint);
             state.setStmt(succs.get(branchIndex));
             newStates.add(state);
-            if (trackBranchHistory)
-                state.recordBranch(stmt, branchIndex);
+            state.recordBranch(stmt, branchIndex);
         }
         // Otherwise, follow all branches
         else {
@@ -255,8 +256,7 @@ public class SymbolicExecutor {
                 // Prune if not satisfiable
                 if (validator.isSatisfiable(newState)) {
                     newStates.add(newState);
-                    if (trackBranchHistory)
-                        newState.recordBranch(stmt, i);
+                    newState.recordBranch(stmt, i);
                 }
             }
         }

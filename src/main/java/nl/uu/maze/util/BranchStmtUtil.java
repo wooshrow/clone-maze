@@ -1,8 +1,8 @@
 package nl.uu.maze.util;
 
-import nl.uu.maze.execution.symbolic.BranchHistory;
-import nl.uu.maze.execution.symbolic.BranchHistory.BranchItem;
-import nl.uu.maze.execution.symbolic.BranchHistory.MethodEntryItem;
+import nl.uu.maze.execution.symbolic.xxxxBranchHistory;
+import nl.uu.maze.execution.symbolic.xxxxBranchHistory.BranchItem;
+import nl.uu.maze.execution.symbolic.xxxxBranchHistory.MethodEntryItem;
 import nl.uu.maze.execution.symbolic.SymbolicState;
 import nl.uu.maze.search.SearchTarget;
 import sootup.core.graph.StmtGraph;

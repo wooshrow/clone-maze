@@ -6,11 +6,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import nl.uu.maze.execution.DSEController;
+import nl.uu.maze.execution.EngineConfiguration;
 import nl.uu.maze.util.BranchStmtUtil;
+import nl.uu.maze.util.HighLevelCFG;
+import nl.uu.maze.util.HighLevelCFG.HCFGPath;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -35,51 +40,66 @@ public class CoverageTracker {
     }
     
     /**
-     * The statements of target methods under tests that we aim to cover. This refers
-     * to coverage by generated tests. In particular, coverage simply by exploration
-     * during the search for tests does not count. 
+     * The statements of the class under test. 
      */
     private Set<Stmt> targetStmts ;
     
+    /**
+     * The branches of the class under test. 
+     */
     private Set<Integer> targetBranches ;
     
     /**
-     * Targets among {@link #targetStmts} that are still not covered by generated tests.
+     * This tracks all Jimple instructions that have been covered by test. These include
+     * instructions that were not included as targets. When a test does not cover
+     * a new target, but does cover a new instruction, the engine may decide to keep
+     * that test.
      */
-    private Set<Stmt> stillOpenStmtTargets ;
-    
-    private Set<Integer> stillOpenBranchTargets ;
+    private Set<Stmt> coveredStmts ;
     
     /**
-     * This tracks all covered branches, which may include branches which are not
-     * targeted. When a test does not produce new targeted coverage, but still
-     * produce new untargeted coverage, the engine may decide to still generate 
-     * that test. 
+     * This tracks all branches that have been covered by test. These include
+     * branches that were not included as targets. When a test does not cover
+     * a new target, but does cover a new branch, the engine may decide to keep
+     * that test.
      */
-    private Set<Integer> coveredRawBranches ;
+    private Set<Integer> coveredBranches ;
     
     /**
      * This tracks the statements that have been visited/covered during exploration 
      * as MAZE searches for tests to generate. Note that this is different from coverage by 
-     * actual tests (by the generated tests) {@link #targetStmts}. A statement can be covered 
+     * actual tests (by the generated tests) {@link #coveredStmts}. A statement can be covered 
      * during the exploration, but remains uncovered by test if no test is generated 
      * that execute that statement. This can happen if for example all program paths 
      * that lead out from that statement turn out to be infeasible.
-     * 
-     * <p>Tracking search-time/exploration-time coverage is relevant for some search strategies.
      */
-    private final Set<Stmt> coveredStmts_byExpl;
+    private Set<Stmt> coveredStmts_byExpl;
+    
+    
+    Map<HighLevelCFG, List<HCFGPath>> targetPaths = new HashMap<>() ;
+    Map<HighLevelCFG, List<HCFGPath>> stillUncoveredTargetPaths = new HashMap<>() ;
+     
+    /**
+     * The statements (across the whole CUT) which are the head of an exception handler.
+     * We store them so we can know when to record their visit into the branch history.
+     */
+    private Set<Stmt> exceptionHandlerHeads = new HashSet<>() ;
+    
+    /**
+     * The statements (across the whole CUT) which are exit stmt of a method in the CUT.
+     * We store them so we can know when to record their visit into the branch history.
+     */
+    private Set<Stmt> exitStmts = new HashSet<>() ;
 
     private CoverageTracker() {
         // Use identity hash map to avoid potentially expensive equals() calls on
         // statements (which are unique by reference, so reference equality suffices)
+        targetStmts     = Collections.newSetFromMap(new IdentityHashMap<>()); 
+        coveredStmts    = Collections.newSetFromMap(new IdentityHashMap<>()); 
         coveredStmts_byExpl = Collections.newSetFromMap(new IdentityHashMap<>());
-        targetStmts  = Collections.newSetFromMap(new IdentityHashMap<>());
-        stillOpenStmtTargets  = Collections.newSetFromMap(new IdentityHashMap<>());
         
-        targetBranches = new HashSet<>() ;
-        stillOpenBranchTargets = new HashSet<>() ;
-        coveredRawBranches = new HashSet<>() ;
+        targetBranches  = new HashSet<>() ; 
+        coveredBranches = new HashSet<>() ; 
     }
     
     /**
@@ -88,9 +108,7 @@ public class CoverageTracker {
     public void addTargets(JavaSootMethod method) {
     	var cfg = method.getBody().getStmtGraph() ;
     	var stmts = method.getBody().getStmts() ;
-    	//System.out.println("### BEFORE ADD #targets=" + targetStmts.size() + ", #open=" + stillOpenTargets.size()) ;
     	targetStmts.addAll(stmts) ;
-    	stillOpenStmtTargets.addAll(stmts) ;
     	//System.out.println("    after add #targets=" + targetStmts.size() + ", #open=" + stillOpenTargets.size()) ;
     	
     	// adding branch-targets; we will only incluce branches from branching
@@ -102,11 +120,40 @@ public class CoverageTracker {
     			Integer hash = BranchStmtUtil.getBranchHash(cfg,S,nextS,true) ; // only branching instructions
     			if (hash != null) {
     				targetBranches.add(hash) ;
-        			stillOpenBranchTargets.add(hash) ;
     			}
     		}
     	}
     	
+    	HighLevelCFG hcfg = new HighLevelCFG(method) ;
+    	System.out.println(">>> HCFG " + hcfg) ;
+    	try {
+    		hcfg.saveAsDot(null);
+    	}
+    	catch(Exception e) { }
+    	// for now we'll target edge-pairs:
+    	int k = EngineConfiguration.getInstance().pathLengthCoverage ;
+    	if (k>=2) {
+    		var targets = hcfg.getMaxElementaryPaths(k) ;
+    		targetPaths.put(hcfg, targets) ;
+        	List<HCFGPath> targets__ = new LinkedList<>() ;
+        	targets__.addAll(targets) ;
+        	stillUncoveredTargetPaths.put(hcfg, targets__) ;
+        	
+        	for (var nd : hcfg.nodes) {
+        		if (nd.isExit()) {
+        			exitStmts.add(nd.stmt) ;
+        		}
+        		if (nd.isExceptionHandlerHead()) {
+        			exceptionHandlerHeads.add(nd.stmt) ;
+        		}
+        	}
+    	}
+    	
+    	
+    	System.out.println(">>>> #targets = " + this.numberOfTargetPaths()) ;
+        for (var T : targetPaths.entrySet()) {
+        	System.out.println("   * " + T.getKey().method.getName() + ": " + T.getValue()) ;
+        }
     	/*
     	System.out.println(method.getSignature());
 	    System.out.println(method.getBody());
@@ -137,13 +184,34 @@ public class CoverageTracker {
         return coveredStmts_byExpl.contains(stmt);
     }
     
+    public boolean isStmtCovered(Stmt stmt) {
+        return coveredStmts.contains(stmt);
+    }
     
-    public boolean registerPathCoveredByTesting(InstructionHistory ihist) {
+    public boolean isExitNode(Stmt stmt) {
+    	return exitStmts.contains(stmt) ;
+    }
+    
+    public boolean isExceptionHandlerHead(Stmt stmt) {
+    	return exceptionHandlerHeads.contains(stmt) ;
+    }
+
+    
+    /**
+     * Determine which targets are covered by the given test-execution, and then
+     * register the covered targets. The test execution is represented as
+     * an instruction history (the list of Jimple instructions/stmt passed during
+     * the test.
+     * <p>The method returns true if the execution an item not covered before, and
+     * else it returns false.
+     */
+    public boolean registerCoveregeByTesting(SymbolicState state, InstructionHistory ihist) {
     	
     	boolean hasNewCoverage = false ; 
     	Stmt prevStmt = null ;
     	StmtGraph<?> currentCfg = null ;
     	
+    	// register passed stmts and branches in ihist:
     	for (var hi : ihist.getHistory()) {
     		if (hi instanceof InstructionHistory.MethodSwitchItem) {
     			prevStmt =  null ;
@@ -152,20 +220,42 @@ public class CoverageTracker {
     		}
     		var hi_ = (InstructionHistory.InstructionItem) hi ;
     		Stmt stmt = hi_.stmt ;
-    		boolean changed = stillOpenStmtTargets.remove(stmt) ;
+    		boolean changed = coveredStmts.add(stmt) ;
     		if (changed) hasNewCoverage = true ;
     		
     		if (prevStmt != null) {
     			Integer branch = BranchStmtUtil.getBranchHash(currentCfg,prevStmt,stmt,false) ;
     			if (branch != null) {
-    				changed = stillOpenBranchTargets.remove(branch) ;
-    				if (changed) hasNewCoverage = true ;
-    				changed = coveredRawBranches.add(branch) ;
+    				changed = coveredBranches.add(branch) ;
     				if (changed) hasNewCoverage = true ;
     			}
     		}
     		prevStmt = stmt ;
     	}
+    	
+    	// register target paths covered by state.branchhistory; only relevant for
+    	// k>=2:
+    	if (EngineConfiguration.getInstance().pathLengthCoverage >= 2) {
+    		var sigma = state.getBranchHistory() ;
+        	for (var Z : this.stillUncoveredTargetPaths.entrySet()) {
+        		var targets = Z.getValue() ;
+        		List<HCFGPath> covered = new LinkedList<>() ;
+            	for (var tau : targets) {
+        		   	if (tau.coverBy(sigma) == 0) {
+        		   		covered.add(tau) ;
+        		   	}
+        		}
+            	if (covered.size() > 0) {
+            		if (EngineConfiguration.getInstance().minimalisticTestSuite)  
+            			hasNewCoverage = true ;
+            		for (var tau : covered) {
+                		targets.remove(tau) ;
+                	}
+            	}
+        	}
+    	}
+    	
+    	
     	return hasNewCoverage ;
     }
     
@@ -181,19 +271,43 @@ public class CoverageTracker {
     	return targetBranches.size() ;
     }
     
+    public int numberOfTargetPaths() {
+    	int n = 0 ;
+    	for (var T : targetPaths.values()) {
+    		n += T.size() ;
+    	}
+    	return n ;
+    }
+    
+    public int numberOfStillUncoveredTargetPaths() {
+    	int m = 0 ;
+    	for (var T : stillUncoveredTargetPaths.values()) {
+    		m += T.size() ;
+    	}
+    	return m ;
+    }
+    
+    
     /**
      * Get the number of target statements that are still uncovered by testing.
      */
     public int numberOfStillUnCoveredStmts() {
-    	return stillOpenStmtTargets.size() ;
+    	return (int) targetStmts.stream().filter(stmt -> ! coveredStmts.contains(stmt)).count() ;
     }
     
     public int numberOfStillUnCoveredBranches() {
-    	return stillOpenBranchTargets.size() ;
+    	return (int) targetBranches.stream().filter(br -> ! coveredBranches.contains(br)).count() ;
     }
     
     public int numberOfCoveredUntargetedBrances() {
-    	return (int) coveredRawBranches.stream().filter(br -> ! targetBranches.contains(br)).count() ;
+    	return (int) coveredBranches.stream().filter(br -> ! targetBranches.contains(br)).count() ;
+    }
+    
+    
+    public boolean allCoverageTargetsCompleted() {
+    	return this.numberOfStillUnCoveredBranches() == 0
+    			&& this.numberOfStillUnCoveredStmts() == 0
+    			&& this.numberOfStillUncoveredTargetPaths() == 0 ;
     }
 
     /**
@@ -205,6 +319,11 @@ public class CoverageTracker {
      *          statements in another method as well!
      */
     public void reset() {
+    	coveredStmts.clear();
         coveredStmts_byExpl.clear();
+        coveredBranches.clear(); 
+        stillUncoveredTargetPaths.clear(); 
+        exitStmts.clear(); 
+        exceptionHandlerHeads.clear(); 
     }
 }

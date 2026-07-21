@@ -24,7 +24,7 @@ import nl.uu.maze.execution.MethodType;
 public class ObjectInstantiation {
     private static final Logger logger = LoggerFactory.getLogger(ObjectInstantiation.class);
 
-    private static final Random rand = EngineConfiguration.getInstance().getRandomGenerator() ;
+    private static final Random rand = EngineConfiguration.getInstance().mkNewRandomGenerator() ;
     /**
      * Attempt to create an instance of the given class.
      * 

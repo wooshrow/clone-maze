@@ -131,9 +131,10 @@ public class HighLevelCFG {
 	}
 	
 	static public class HCFGPath {
-		String id ;
-		List<HCFGEdge> path = new LinkedList<>() ;
-		List<Integer> encoded ;
+		
+		public String id ;
+		private List<HCFGEdge> path = new LinkedList<>() ;
+		private List<Integer> encoded ;
 		
 		HCFGPath(HighLevelCFG hcfg, List<HCFGEdge> path) {
 			this.path = path ;
@@ -178,9 +179,10 @@ public class HighLevelCFG {
 		 * 
 		 * <p> return -1  : exec-hist does NOT cover this target path.
 		 * <p> return 0   : exec-hist covers sigma. That is, this path is a subpath of hist.
-		 * <p> return > 0 : exec-hist partially covers this path. That is, for some non-empty
-		 *          prefix tau of the path, tau is a subpath of hist. The returned value
-		 *          gives the remaining length of this path that is still uncovered.
+		 * <p> return > 0 : exec-hist does not cover sigma, but may cover it if extended.
+		 *                  That is, hist ends with a suffix tau which is a proper prefix
+		 *                  of sigma. The returned value gives the remaining length of this 
+		 *                  path that is still uncovered.
 		 */
 		public int coverBy(List<Integer> execHistory) {
 			return cover(execHistory,encoded) ;
@@ -196,7 +198,7 @@ public class HighLevelCFG {
 	 */
 	public Map<HCFGNode, List<HCFGEdge>> successors = new HashMap<>() ;
 	public List<HCFGNode> nodes = new LinkedList<>();
-	
+		
 	@SuppressWarnings("rawtypes")
 	public HighLevelCFG(JavaSootMethod method) {
 		this.method = method ;
@@ -373,22 +375,32 @@ public class HighLevelCFG {
 	 * 
 	 * <p> -1 : exec-hist does not cover sigma
 	 * <p> 0  : exec-hist covers sigma. That is, sigma is a subpath of hist.
-	 * <p> >0 : exev-hist partially covers sigma. That is, for some non-empty
-	 *          prefix tau of sigma, tau is a subpath of hist.
+	 * <p> >0 : exec-hist does not cover sigma, but may cover it if extended.
+     *          That is, hist ends with a suffix tau which is a proper prefix
+	 *          of sigma. The returned value gives the remaining length of this 
+	 *          path that is still uncovered.
 	 */
-	private static int cover(List<Integer> execHistory, List<Integer> sigma) {
+	public static int cover(List<Integer> execHistory, List<Integer> sigma) {
 		if (sigma.isEmpty())
 			throw new IllegalArgumentException() ;
 		if (execHistory == null || execHistory.isEmpty())
 			return -1 ;
 		int sigmaStart = sigma.get(0) ;
 		int k = 0 ;
-		int bestMatch = -1 ;
 		for (var s0 : execHistory) {
 			if (s0 == sigmaStart) {
-				// partial match. s0 is the start of sigma
+				// match the start of sigma. s0 is the start of sigma
 				int n = k ;
 				for (var t : sigma) {
+					if (n >= execHistory.size()) {
+						// we have a partial match. That is, hist does not cover sigma,
+						// but it can be extended to cover sigma.
+						
+						// calculate the remaining part of sigma that is still uncovered:
+						int stillToCover = sigma.size() - (n - k) ;
+						return stillToCover ;
+						
+					}
 					int zz = execHistory.get(n) ;
 					if (zz != t) {
 						// no longer match
@@ -396,45 +408,23 @@ public class HighLevelCFG {
 					}
 					n++ ;
 				}
-				// n would be the longest prefix of sigma where we have a match
-				// with execHist[k...)
-				// calculate the remaining part of sigma that 
-				if (n > bestMatch)
-					bestMatch = n ;
+				int matchedPartOfSigma = n - k ;
+				if (matchedPartOfSigma == sigma.size()) {
+					// we have full match!
+					return 0 ;
+				}
+				// else we don't have a match, yet. Continue with the next s0
 			}
 			k++ ;
 		}
-		// if bestMatch is -1, we have no match.
-		// if bestMatch is >=0, flip it so it gives the remaning length of sigma
-		// that has yet to match
-		if (bestMatch >= 0) {
-			bestMatch = sigma.size() - bestMatch ;
-		}
-		return bestMatch ;
+		return -1 ;
 	}
-	
-	/**
-	 * Return all paths of length one (so, all the edges) of this HCFG to be
-	 * used as coverage targets.
-	 */
-	public List<HCFGPath> getEdgeTargets() {
-		List<HCFGPath> targets = new LinkedList<>() ;
-		for (var nd : nodes) {
-			for (var E : successors.get(nd)) {
-				List<HCFGEdge> sigma = new LinkedList<>() ;
-				sigma.add(E) ;
-				HCFGPath sigma_ = new HCFGPath(this,sigma) ;
-				targets.add(sigma_) ;
-			}
-		}
-		return targets ;
-	}
-	
-	
+
 	/**
 	 * Check is sequence tau is a strict suffix of sigma. Both tau and sigma
 	 * are assumed to be non-cyclic elementary paths.
-	 * Note: deliberately using == to check equality.
+	 * 
+	 * <p>NOTE: deliberately using == to check equality.
 	 */
 	private static <T> boolean isStrictSuffixOf(List<T> tau, List<T> sigma) {
 		
@@ -536,24 +526,29 @@ public class HighLevelCFG {
 		
 		//System.out.println(">>> #T=" + T.size()) ;
 		
-		T.clear();
-		T.addAll(cycles) ;
+		List<List<HCFGEdge>> Tfinal = new LinkedList<>() ;
+		Tfinal.addAll(cycles) ;
+		T.addAll(alreadyRightMaximal) ;
 		
-		// only add paths in alreadyRightMaximal which are also left-maximal to T
-		for (var tau : alreadyRightMaximal) {
-			boolean maximal = ! alreadyRightMaximal.stream().anyMatch(sigma -> tau != sigma && isStrictSuffixOf(tau,sigma)) ;
+		// only add paths from T that are also left-maximal:
+		for (var tau : T) {
+			boolean maximal = ! T.stream().anyMatch(sigma -> tau != sigma && isStrictSuffixOf(tau,sigma)) ;
 			if (maximal)
-				T.add(tau) ;
+				Tfinal.add(tau) ;
 		}
 		
-		// T now contain all maximal elementary paths of length <= k
+		// Tfinal now contain all maximal elementary paths of length <= k
 		
 		List<HCFGPath> targets = new LinkedList<>() ;
-		for (var sigma : T) {
+		for (var sigma : Tfinal) {
 			targets.add(new HCFGPath(this,sigma)) ;
 		}
+		
+		// return all the paths in tergets, but filter out the path whose encoded-path is
+		// empty, e.g. the path [s,n] where s in the entry node. Such a path will always
+		// be traversed, so no need to have it as a target.
 				
-		return targets ;
+		return targets.stream().filter(t -> ! t.encoded.isEmpty()).toList() ;
 	}
 
 }

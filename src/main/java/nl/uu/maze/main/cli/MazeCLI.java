@@ -88,6 +88,9 @@ public class MazeCLI implements Callable<Integer> {
     
     @Option(names = { "--minimalistic-suite" }, description = "When true: only tests that add new stmt or branch coverage are generated (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean minimalisticTestSuite;
+    
+    @Option(names = { "--path-length-cov" }, description = "Length of elementary paths whose coverage will be tracked (default: ${DEFAULT-VALUE})", defaultValue = "1", paramLabel = "<int>")
+    private int pathLengthCoverage;
 
     @Option(names = { "--constrain-FP-params-to-normal-numbers" }, description = "When true will constrain the symbolic solver to generate normal numbers for floating-point-like methods parameters (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean constrainFPNumberParametersToNormalNumbers ;
@@ -123,6 +126,9 @@ public class MazeCLI implements Callable<Integer> {
             EngineConfiguration.getInstance().enableDivisionByZeroChecking = this.enableDivisionByZeroChecking ;
             EngineConfiguration.getInstance().minimalisticTestSuite = this.minimalisticTestSuite ;
             EngineConfiguration.getInstance().max_array_size = this.max_array_size ;
+            EngineConfiguration.getInstance().pathLengthCoverage = this.pathLengthCoverage ;
+            
+            
             
             // dealing with the rest of the options:
             

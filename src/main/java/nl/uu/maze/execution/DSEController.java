@@ -136,14 +136,7 @@ public class DSEController {
         this.concrete = new ConcreteExecutor();
         this.validator = new SymbolicStateValidator();
         
-        // we will let coverage and branch-history tracking to be always on:
-        // boolean turnOnCoverageTracking = searchStrategy.requiresCoverageData() ;
-        // boolean turnOnbranchHistoryTracking = searchStrategy.requiresBranchHistoryData() ;
-        boolean turnOnCoverageTracking = true ;
-        boolean turnOnbranchHistoryTracking = true ;
-        this.symbolic = new SymbolicExecutor(concrete, validator, analyzer, 
-        		turnOnCoverageTracking,
-        		turnOnbranchHistoryTracking);
+        this.symbolic = new SymbolicExecutor(concrete, validator, analyzer);
         
         this.generator = new JUnitTestGenerator(targetJUnit4, analyzer, concrete, testTimeout, packageName);
     }
@@ -206,15 +199,15 @@ public class DSEController {
             CoverageTracker.getInstance().addTargets(method) ;
             logger.info("Adding " + method.getName() + " as a target, #stmts:" + method.getBody().getStmts().size()) ;
             System.out.println(">>> " + method.getName() + "\n" + method.getBody()) ;
-            debugPrintCFGs(method) ;
-            var HCFG = new HighLevelCFG(method) ;
-            System.out.println(">>>> HCFG: " + HCFG) ;
-            HCFG.saveAsDot(null) ;
-            var targetPaths = HCFG.getMaxElementaryPaths(-1) ;
-            System.out.println(">>>> #targets = " + targetPaths.size()) ;
-            for (var t : targetPaths) {
-            	System.out.println("   * target " + t) ;
-            }
+            //debugPrintCFGs(method) ;
+            //var HCFG = new HighLevelCFG(method) ;
+            //System.out.println(">>>> HCFG: " + HCFG) ;
+            //HCFG.saveAsDot(null) ;
+            //var targetPaths = HCFG.getMaxElementaryPaths(-1) ;
+            //System.out.println(">>>> #targets = " + targetPaths.size()) ;
+            //for (var t : targetPaths) {
+            //	System.out.println("   * target " + t) ;
+            //}
         }
 
         if (staticMuts.isEmpty() && nonStaticMuts.isEmpty()) {
@@ -262,9 +255,15 @@ public class DSEController {
         	int branchTargets = CoverageTracker.getInstance().numberOfTargetBranches() ;
         	int branchCovered = branchTargets - CoverageTracker.getInstance().numberOfStillUnCoveredBranches() ;
         	int untargetdBranchCovered = CoverageTracker.getInstance().numberOfCoveredUntargetedBrances() ;
+        	int pathTargets = CoverageTracker.getInstance().numberOfTargetPaths() ;
+        	int pathCovered = pathTargets - CoverageTracker.getInstance().numberOfStillUncoveredTargetPaths() ;
         	logger.info("statement-converage (by test): " + stmtCovered + "/" + stmtTargets) ;
         	logger.info("branch-converage    (by test): " + branchCovered + "/" + branchTargets
         			+ ", #untargeted-branches covered: " + untargetdBranchCovered) ;
+        	if (EngineConfiguration.getInstance().pathLengthCoverage >= 2)
+        		logger.info("k-path-converage    (by test): " + pathCovered + "/" + pathTargets) ;
+        	
+        	
         	generator.writeToFile(outPath); 
             logger.info("#generated test-cases: {}", generator.getNumberOfGeneratedTestCases()) ;
             if (generator.getNumberOfViolationFound() > 0) {
@@ -382,7 +381,7 @@ public class DSEController {
             	InstructionHistory history = rerunToGetHistory(state.getMethod(), argMap.get()) ;
             	//InstructionHistory history = new InstructionHistory() ;
             	//System.out.println("history: " + history.getHistory()) ;
-            	var hasNewCov = CoverageTracker.getInstance().registerPathCoveredByTesting(history) ;
+            	var hasNewCov = CoverageTracker.getInstance().registerCoveregeByTesting(state, history) ;
             	if (hasNewCov || state.isExceptionThrown() || ! EngineConfiguration.getInstance().minimalisticTestSuite) {
                 	/*
                 	System.out.println("    argmap: " + argMap.get()) ;
@@ -444,8 +443,7 @@ public class DSEController {
             // stop the search if the engine is configured to add only coverage-
             // contributing tests, and all coverage targets are already covered.
             if (EngineConfiguration.getInstance().minimalisticTestSuite
-            	&&  CoverageTracker.getInstance().numberOfStillUnCoveredBranches() 
-            		+ CoverageTracker.getInstance().numberOfStillUnCoveredStmts() == 0) {
+            	&&  CoverageTracker.getInstance().allCoverageTargetsCompleted()) {
             	return concreteDriven ? Optional.of(current) : Optional.empty();
             }
         	
@@ -602,7 +600,7 @@ public class DSEController {
                 if (isNew) {
                 	var history = rerunToGetHistory(method, argMap) ;
                 	//System.out.println("history: " + history.getHistory()) ;
-                	boolean hasNewCov = CoverageTracker.getInstance().registerPathCoveredByTesting(history) ;
+                	boolean hasNewCov = CoverageTracker.getInstance().registerCoveregeByTesting(finalState.get(), history) ;
                 	// add the test case; however if MAZE is configured to only add
                 	// a test when contributes to new coverage, then we do so:
                 	if (hasNewCov || ! EngineConfiguration.getInstance().minimalisticTestSuite)

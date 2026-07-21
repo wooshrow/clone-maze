@@ -21,6 +21,10 @@ import sootup.core.graph.StmtGraph;
 import sootup.core.jimple.basic.Immediate;
 import sootup.core.jimple.common.expr.AbstractInstanceInvokeExpr;
 import sootup.core.jimple.common.expr.AbstractInvokeExpr;
+import sootup.core.jimple.common.stmt.JAssignStmt;
+import sootup.core.jimple.common.stmt.JReturnStmt;
+import sootup.core.jimple.common.stmt.JReturnVoidStmt;
+import sootup.core.jimple.common.stmt.JThrowStmt;
 import sootup.core.jimple.common.stmt.Stmt;
 import sootup.core.signatures.MethodSignature;
 import sootup.core.types.Type;
@@ -371,6 +375,30 @@ public class SymbolicState implements SearchTarget {
                 newCoverageDepths.add(depth);
             }
         }
+    }
+    
+    /**
+     * Record the stmt into the branch history of this state, if it is an exit-statement
+     * of some method under test.
+     */
+    public void recordIfExitStmt(Stmt stmt) {
+    	if (stmt instanceof JReturnStmt 
+    			|| stmt instanceof JReturnVoidStmt 
+    			|| stmt instanceof JThrowStmt) {
+    		if (coverageTracker.isExitNode(stmt)) {
+    			branchHistory.add(BranchStmtUtil.getBranchHash(stmt,-1)) ;
+    		}
+    	}
+    }
+    
+    /**
+     * Record the stmt into the branch history of this state, if it is the head of an
+     * exception handler in a method under test.
+     */
+    public void recordIfExceptiomHead(Stmt stmt) {
+    	if (stmt instanceof JAssignStmt && coverageTracker.isExceptionHandlerHead(stmt)) {
+    		branchHistory.add(BranchStmtUtil.getBranchHash(stmt,-1)) ;
+    	}
     }
 
     /**
