@@ -29,6 +29,11 @@ public class SymbolicSearchStrategy extends SearchStrategy<SymbolicState> {
     }
 
     @Override
+    public int getTotalExploredCount() {
+    	return strategy.getTotalExploredCount() ;
+    }
+    
+    @Override
     public void remove(SymbolicState state) {
         strategy.remove(state);
     }

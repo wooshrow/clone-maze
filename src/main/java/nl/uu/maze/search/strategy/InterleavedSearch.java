@@ -57,6 +57,7 @@ public class InterleavedSearch<T extends SearchTarget> extends SearchStrategy<T>
         for (SearchStrategy<T> strategy : strategies) {
             strategy.add(target);
         }
+        this.count ++ ;
     }
 
     @Override

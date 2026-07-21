@@ -137,6 +137,11 @@ public class ConcreteSearchStrategy extends SearchStrategy<PathConditionCandidat
     public void add(PathConditionCandidate candidate) {
         strategy.add(candidate);
     }
+    
+    @Override
+    public int getTotalExploredCount() {
+    	return strategy.getTotalExploredCount() ;
+    }
 
     @Override
     public void remove(PathConditionCandidate candidate) {

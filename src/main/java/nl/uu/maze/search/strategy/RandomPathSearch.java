@@ -35,6 +35,7 @@ public class RandomPathSearch<T extends SearchTarget> extends SearchStrategy<T> 
             // Remove state from current node (don't need it anymore)
             current.setValue(null);
         }
+        count++ ;
     }
 
     @Override

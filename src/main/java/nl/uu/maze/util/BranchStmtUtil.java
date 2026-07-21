@@ -1,20 +1,13 @@
 package nl.uu.maze.util;
 
-import nl.uu.maze.execution.symbolic.xxxxBranchHistory;
-import nl.uu.maze.execution.symbolic.xxxxBranchHistory.BranchItem;
-import nl.uu.maze.execution.symbolic.xxxxBranchHistory.MethodEntryItem;
-import nl.uu.maze.execution.symbolic.SymbolicState;
-import nl.uu.maze.search.SearchTarget;
 import sootup.core.graph.StmtGraph;
 import sootup.core.jimple.common.stmt.JIfStmt;
 import sootup.core.jimple.common.stmt.Stmt;
 import sootup.core.jimple.javabytecode.stmt.JSwitchStmt;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
-import org.slf4j.LoggerFactory;
-import org.slf4j.Logger;
+
 
 
 public class BranchStmtUtil {

@@ -250,6 +250,7 @@ public class DSEController {
         try {
             run();
         } finally {
+        	logger.info("#items explored: " + searchStrategy.getTotalExploredCount()) ;
         	int stmtTargets = CoverageTracker.getInstance().numberOfTargetStmts() ;
         	int stmtCovered = stmtTargets - CoverageTracker.getInstance().numberOfStillUnCoveredStmts() ;
         	int branchTargets = CoverageTracker.getInstance().numberOfTargetBranches() ;

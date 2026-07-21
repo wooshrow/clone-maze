@@ -54,6 +54,7 @@ public class ProbabilisticSearch<T extends SearchTarget> extends SearchStrategy<
     public void add(T target) {
         targets.add(target);
         target.setIteration(iteration);
+        this.count++ ;
     }
 
     @Override

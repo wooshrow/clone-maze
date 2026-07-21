@@ -155,23 +155,23 @@ public class MethodInvoker {
     private Optional<SymbolicState> executeSymbolic(SymbolicState state, JavaSootMethod method, AbstractInvokeExpr expr,
             Local base) {
         // Create a fresh state that will enter the method call
-        SymbolicState callee = new SymbolicState(method, analyzer.getCFG(method));
-        callee.setCaller(state);
+        SymbolicState calleeStartingState = new SymbolicState(method, analyzer.getCFG(method));
+        calleeStartingState.setCaller(state);
         // Also set the constraints to be the same as the caller state
         // This will copy references, so original constraints will be modified if the
         // callee state adds new constraints (intentionally)
-        callee.setConstraints(state.getPathConstraints(), state.getEngineConstraints());
+        calleeStartingState.setConstraints(state.getPathConstraints(), state.getEngineConstraints());
         // Copy the heap counter to avoid interference of constraints added by callee
         // with constraints added by caller after the method call
-        callee.heap.setCounters(state.heap.getHeapCounter(), state.heap.getRefCounter());
-        callee.heap.setResolvedRefs(state.heap.getResolvedRefs());
+        calleeStartingState.heap.setCounters(state.heap.getHeapCounter(), state.heap.getRefCounter());
+        calleeStartingState.heap.setResolvedRefs(state.heap.getResolvedRefs());
 
         // Copy object reference for "this" (if needed)
         if (base != null) {
             Expr<?> symRef = state.lookup(base.getName());
-            callee.assign("this", symRef);
+            calleeStartingState.assign("this", symRef);
             // Link the heap object from caller state to the callee state
-            callee.heap.linkHeapObject(symRef, state.heap);
+            calleeStartingState.heap.linkHeapObject(symRef, state.heap);
         }
 
         // Copy arguments for the method call to the fresh state
@@ -180,22 +180,22 @@ public class MethodInvoker {
             Immediate arg = args.get(i);
             Expr<?> argExpr = jimpleToZ3.transform(arg, state);
             String argName = ArgMap.getSymbolicName(MethodType.CALLEE, i);
-            callee.assign(argName, argExpr);
+            calleeStartingState.assign(argName, argExpr);
             if (state.heap.isMultiArray(arg.toString())) {
                 // If the argument is a multidimensional array, copy the array indices
                 // to the callee state
-                callee.heap.setArrayIndices(argName, state.heap.getArrayIndices(arg.toString()));
+                calleeStartingState.heap.setArrayIndices(argName, state.heap.getArrayIndices(arg.toString()));
             }
 
             // If the argument is a reference, link the heap object from caller state to
             // the callee state
             if (argExpr != null && sorts.isRef(argExpr)) {
-                callee.heap.linkHeapObject(argExpr, state.heap);
+                calleeStartingState.heap.linkHeapObject(argExpr, state.heap);
             }
         }
 
         // Actual execution will be done by {@link DSEController}!
-        return Optional.of(callee);
+        return Optional.of(calleeStartingState);
     }
 
     /** Execute a method call concretely. */

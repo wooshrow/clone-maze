@@ -51,6 +51,7 @@ public class SubpathGuidedSearch<T extends SearchTarget> extends SearchStrategy<
             subpathCounts.put(subpathHash, subpathCounts.getOrDefault(subpathHash, 0) + 1);
         }
         targets.add(target);
+        count++ ;
     }
 
     @Override
