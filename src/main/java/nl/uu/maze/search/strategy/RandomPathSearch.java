@@ -3,6 +3,7 @@ package nl.uu.maze.search.strategy;
 import java.util.List;
 import java.util.Random;
 
+import nl.uu.maze.execution.EngineConfiguration;
 import nl.uu.maze.search.SearchTarget;
 import nl.uu.maze.util.Tree;
 import nl.uu.maze.util.Tree.TreeNode;
@@ -19,7 +20,7 @@ public class RandomPathSearch<T extends SearchTarget> extends SearchStrategy<T> 
     private Tree<T> tree;
     private TreeNode<T> current;
     private TreeNode<T> selected;
-    private final Random random = new Random();
+    private final Random random = EngineConfiguration.getInstance().mkNewRandomGenerator() ;
 
     public String getName() {
         return "RandomPathSearch";

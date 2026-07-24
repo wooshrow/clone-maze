@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import nl.uu.maze.execution.EngineConfiguration;
 import nl.uu.maze.search.SearchTarget;
 import sootup.core.jimple.common.stmt.JIfStmt;
 import sootup.core.jimple.javabytecode.stmt.JSwitchStmt;
@@ -25,7 +26,7 @@ public class SubpathGuidedSearch<T extends SearchTarget> extends SearchStrategy<
 
     private final Map<Integer, Integer> subpathCounts = new HashMap<>();
     private final List<T> targets = new ArrayList<>();
-    private final Random random = new Random();
+    private final Random random = EngineConfiguration.getInstance().mkNewRandomGenerator() ;
 
     public String getName() {
         return "SubpathGuidedSearch";
