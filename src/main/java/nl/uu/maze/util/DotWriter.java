@@ -18,12 +18,18 @@ public class DotWriter {
 	public DotWriter(String graphName) { 
 		buf.append("digraph " +  graphName + "{") ;
 	}
-	
+
+	/**
+	 * Node with styling of a start-node.
+	 */
 	public void addStartNode(String nodeId, String nodeLabel) {
 		buf.append("\n   " + nodeId + "[shape=box, label=" + quote(nodeLabel) + "]") ;
 	}
 	
-	public void addExeceptionHeadNode(String nodeId, String nodeLabel) {
+	/**
+	 * A node with a different styling than standard node.
+	 */
+	public void addNode2(String nodeId, String nodeLabel) {
 		buf.append("\n   " + nodeId + "[shape=box, color=red, label=" + quote(nodeLabel) + "]") ;
 	}
 	
@@ -31,12 +37,18 @@ public class DotWriter {
 		buf.append("\n   " + nodeId + "[label=" + quote(nodeLabel) + "]") ;
 	}
 
+	/**
+	 * Node with styling of an exit-node.
+	 */
 	public void addExitNode(String nodeId, String nodeLabel) {
 		buf.append("\n   " + nodeId + "[style=bold, label=" + quote(nodeLabel) + "]") ;
 	}
 
-	public void addEdge(String srcId, String srcDest) {
+	public void addEdge(String srcId, String srcDest, String label) {
 		buf.append("\n   " + srcId + " -> " + srcDest) ;
+		if (label != null) {
+			buf.append(" [label=" + quote(label) + "]") ;
+		}
 	}
 	
 	public void close() {

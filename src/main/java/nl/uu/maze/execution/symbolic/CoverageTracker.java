@@ -8,8 +8,8 @@ import org.slf4j.LoggerFactory;
 import nl.uu.maze.execution.DSEController;
 import nl.uu.maze.execution.EngineConfiguration;
 import nl.uu.maze.util.BranchStmtUtil;
-import nl.uu.maze.util.HighLevelCFG;
-import nl.uu.maze.util.HighLevelCFG.HCFGPath;
+import nl.uu.maze.util.HCFG;
+import nl.uu.maze.util.HCFG.HCFGPath;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -76,8 +76,8 @@ public class CoverageTracker {
     private Set<Stmt> coveredStmts_byExpl;
     
     
-    Map<HighLevelCFG, List<HCFGPath>> targetPaths = new HashMap<>() ;
-    Map<HighLevelCFG, List<HCFGPath>> stillUncoveredTargetPaths = new HashMap<>() ;
+    Map<HCFG, List<HCFGPath>> targetPaths = new HashMap<>() ;
+    Map<HCFG, List<HCFGPath>> stillUncoveredTargetPaths = new HashMap<>() ;
      
     /**
      * The statements (across the whole CUT) which are the head of an exception handler.
@@ -124,7 +124,7 @@ public class CoverageTracker {
     		}
     	}
     	
-    	HighLevelCFG hcfg = new HighLevelCFG(method) ;
+    	HCFG hcfg = new HCFG(method) ;
     	System.out.println(">>> HCFG " + hcfg) ;
     	try {
     		hcfg.saveAsDot(null);
@@ -132,19 +132,19 @@ public class CoverageTracker {
     	catch(Exception e) { }
     	// for now we'll target edge-pairs:
     	int k = EngineConfiguration.getInstance().pathLengthCoverage ;
-    	if (k>=2) {
-    		var targets = hcfg.getMaxElementaryPaths(k) ;
+    	if (k>=1) {
+    		var targets = hcfg.getMaxElementaryPaths2(k) ;
     		targetPaths.put(hcfg, targets) ;
         	List<HCFGPath> targets__ = new LinkedList<>() ;
         	targets__.addAll(targets) ;
         	stillUncoveredTargetPaths.put(hcfg, targets__) ;
         	
         	for (var nd : hcfg.nodes) {
-        		if (nd.isExit()) {
-        			exitStmts.add(nd.stmt) ;
+        		if (HCFG.isExitNode(nd)) {
+        			exitStmts.add(nd.label) ;
         		}
-        		if (nd.isExceptionHandlerHead()) {
-        			exceptionHandlerHeads.add(nd.stmt) ;
+        		if (HCFG.isExceptionHandlerHead(nd)) {
+        			exceptionHandlerHeads.add(nd.label) ;
         		}
         	}
     	}
