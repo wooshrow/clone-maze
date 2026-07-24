@@ -65,7 +65,7 @@ public class HCFG extends DiGraph<Stmt,Stmt,nl.uu.maze.util.HCFG.HCFGNodeType,St
 	public static class HCFGPath {
 		
 		public String id ;
-		private List<DiGraphEdge<Stmt,Stmt,HCFGNodeType,String>> path = new LinkedList<>() ;
+		public List<DiGraphEdge<Stmt,Stmt,HCFGNodeType,String>> path = new LinkedList<>() ;
 		private List<Integer> encoded ;
 		
 		HCFGPath(List<DiGraphEdge<Stmt,Stmt,HCFGNodeType,String>> path) {
@@ -361,11 +361,17 @@ public class HCFG extends DiGraph<Stmt,Stmt,nl.uu.maze.util.HCFG.HCFGNodeType,St
 	}
 	
 	/**
-	 * Return the distance from the given stmt to a target HCFG node. The distance
-	 * is the number of HCFG nodes in-between to get to the target node.
-	 * If the node is not reachable, -1 is returned.
+	 * Return the distance from the given stmt to a target HCFG node. 
+	 * "Distance" here is the number of HCFG nodes in-between in the path
+	 * from stmt to the target node. The target node itself is not counted.
+	 * So, keep in mind that distance 0 does not necessarily mean that
+	 * stmt is the same as nd.label, though it means it can reach nd.label
+	 * without passing any branching statement in between,
+	 * 
+	 * <p>If the node is not reachable, -1 is returned.
 	 */
 	public int dist(Stmt stmt, DiGraphNode<Stmt,HCFGNodeType> nd) {
+		if (stmt == nd.label) return 0 ;
 		var nd0 = stmt2Node.get(stmt) ;
 		if (nd0 == null)
 			throw new IllegalArgumentException() ;
@@ -373,31 +379,28 @@ public class HCFG extends DiGraph<Stmt,Stmt,nl.uu.maze.util.HCFG.HCFGNodeType,St
 	}
 	
 	/**
-	 * Distance from the stmt to an exit node. Distance is given in terms
-	 * of the number of HCFG nodes in-between passed to get to the target
-	 * node.
+	 * Distance from the stmt to an exit node. Distance is defined as in
+	 * {@link #dist(Stmt, DiGraphNode)}.
 	 */
 	public int distToExit(Stmt stmt) {
 		Integer D = cachedDistanceToExit.get(stmt) ;
 		if (D != null)
 			return D ;
+		D = -1 ;
 		for (var nd : nodes) {
 			if (isExitNode(nd)) {
 				int dx = dist(stmt,nd) ;
-				if (dx >= 0) {
-					if (D == null || dx < D) D = dx ;
-				}
+				if (D < 0 || (dx>=0 && dx < D))
+					D = dx ;
 			}
 		}
-		if (D == null) return -1 ;
+		cachedDistanceToExit.put(stmt, D) ;
 		return D ;
 	}
 	
 	/**
 	 * The distance from the stmt to the first node in the given target
-	 * path.  Distance is given in terms of the number of HCFG nodes 
-	 * in-between passed to get to the target node. If the node is not
-	 * reachable, -1 is returned.
+	 * path.  Distance is defined as in {@link #dist(Stmt, DiGraphNode)}.
 	 */
 	public int distToPathHead(Stmt stmt, HCFGPath sigma) {
 		var nd = sigma.path.getFirst().src ;

@@ -8,6 +8,7 @@ import java.util.Random;
 import nl.uu.maze.execution.EngineConfiguration;
 import nl.uu.maze.search.SearchTarget;
 import nl.uu.maze.search.heuristic.SearchHeuristic;
+import nl.uu.maze.util.HCFG.HCFGPath;
 
 /**
  * Probabilistic Search (PS) strategy.

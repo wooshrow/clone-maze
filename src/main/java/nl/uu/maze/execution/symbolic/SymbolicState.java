@@ -12,10 +12,13 @@ import com.microsoft.z3.*;
 import nl.uu.maze.analysis.JavaAnalyzer;
 import nl.uu.maze.execution.MethodType;
 import nl.uu.maze.util.BranchStmtUtil;
+import nl.uu.maze.util.HCFG;
+import nl.uu.maze.util.HCFG.HCFGPath;
 import nl.uu.maze.util.Pair;
 import nl.uu.maze.util.Z3ContextProvider;
 import nl.uu.maze.util.Z3Sorts;
 import nl.uu.maze.execution.symbolic.PathConstraint.SingleConstraint;
+import nl.uu.maze.execution.symbolic.TargetPath.TargetPathStatus;
 import nl.uu.maze.search.SearchTarget;
 import sootup.core.graph.StmtGraph;
 import sootup.core.jimple.basic.Immediate;
@@ -93,6 +96,14 @@ public class SymbolicState implements SearchTarget {
      * path leading to this state.
      */
     private final List<Integer> branchHistory;
+    
+    
+    /**
+     * If not null, this is a target path that the execution towards this symbolic
+     * state strives to cover, or has covered, or partially covers.
+     */
+    private TargetPath targetpath = null ;
+    
     /**
      * The iteration at which this state was added to the search strategy.
      */
@@ -375,6 +386,59 @@ public class SymbolicState implements SearchTarget {
                 newCoverageDepths.add(depth);
             }
         }
+    }
+    
+    /**
+     * Find a target-path (within the same method as this.method) that
+     * is reachable from this.stmt. No particular selection is made
+     * of which path to take in case there are multiple choices.
+     */
+    private TargetPath findReachableTargetPath(HCFG hcfg) {
+    	var targets = CoverageTracker.getInstance().stillUncoveredTargetPaths.get(hcfg) ;
+    	for (var sigma : targets) {
+    		var dist = hcfg.distToPathHead(stmt, sigma) ;
+    		if (dist >= 0) {
+    			var T = new TargetPath(sigma) ;
+    			T.status = TargetPathStatus.APPROACHING_TARGET ;
+    			return T ;
+    		}
+    	}
+		return  new TargetPath() ;
+    }
+    
+    public void updateTargetPathStatus() {
+    	var hcfg = CoverageTracker.getInstance().getHCFG(method) ;
+    	if (hcfg == null && targetpath == null) {
+    		targetpath = new TargetPath() ;
+			return ;
+    	}
+		if (targetpath == null) {
+			targetpath = findReachableTargetPath(hcfg) ;
+			return ;
+    	}
+		// both hcfg and targetpath are not null:
+		
+    	switch (targetpath.status) {
+    	case TARGET_COVERED : return ;
+    	case TARGET_PARTIALLY_COVERED :
+    		var k = targetpath.targetpath.coverBy(branchHistory) ;
+    		if (k == 0) {
+    			targetpath.status = TargetPathStatus.TARGET_COVERED ;
+    			break ;
+    		}
+    		else if (k > 0 ) {
+    			break ;
+    		}
+    		// else k<0 ... the path deviates from target!
+    		targetpath = findReachableTargetPath(hcfg) ;
+    		break ;
+    	case APPROACHING_TARGET :
+    		var dist = hcfg.distToPathHead(stmt, targetpath.targetpath) ;
+    		if (dist >= 0) break ;
+    		targetpath = findReachableTargetPath(hcfg) ;
+    		break ;
+    	}
+    	
     }
     
     /**

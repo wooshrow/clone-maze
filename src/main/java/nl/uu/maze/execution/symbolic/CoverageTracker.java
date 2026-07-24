@@ -234,8 +234,8 @@ public class CoverageTracker {
     	}
     	
     	// register target paths covered by state.branchhistory; only relevant for
-    	// k>=2:
-    	if (EngineConfiguration.getInstance().pathLengthCoverage >= 2) {
+    	// k>=1:
+    	if (EngineConfiguration.getInstance().pathLengthCoverage >= 1) {
     		var sigma = state.getBranchHistory() ;
         	for (var Z : this.stillUncoveredTargetPaths.entrySet()) {
         		var targets = Z.getValue() ;
@@ -245,17 +245,12 @@ public class CoverageTracker {
         		   		covered.add(tau) ;
         		   	}
         		}
-            	if (covered.size() > 0) {
-            		if (EngineConfiguration.getInstance().minimalisticTestSuite)  
-            			hasNewCoverage = true ;
-            		for (var tau : covered) {
-                		targets.remove(tau) ;
-                	}
+            	if (covered.size() > 0 && EngineConfiguration.getInstance().minimalisticTestSuite) {
+            		hasNewCoverage = true ;
             	}
+            	targets.removeAll(covered) ;
         	}
     	}
-    	
-    	
     	return hasNewCoverage ;
     }
     
@@ -285,6 +280,15 @@ public class CoverageTracker {
     		m += T.size() ;
     	}
     	return m ;
+    }
+    
+    public HCFG getHCFG(JavaSootMethod method) {
+    	for (var hcfg : this.targetPaths.keySet()) {
+    		if (hcfg.method == method) {
+    			return hcfg ;
+    		}
+    	}
+    	return null ;
     }
     
     
