@@ -66,7 +66,7 @@ public class HCFG extends DiGraph<Stmt,Stmt,nl.uu.maze.util.HCFG.HCFGNodeType,St
 		
 		public String id ;
 		public List<DiGraphEdge<Stmt,Stmt,HCFGNodeType,String>> path = new LinkedList<>() ;
-		private List<Integer> encoded ;
+		public List<Integer> encoded ;
 		
 		HCFGPath(List<DiGraphEdge<Stmt,Stmt,HCFGNodeType,String>> path) {
 			this.path = path ;
@@ -116,7 +116,7 @@ public class HCFG extends DiGraph<Stmt,Stmt,nl.uu.maze.util.HCFG.HCFGNodeType,St
 				z += " --> " + last.dest.id + " " + last.dest.properties;
 				
 			}
-			z += " .... " + encoded ;
+			z += " .... encoding: " + encoded ;
 			return z ;
 		}
 	}
@@ -300,7 +300,7 @@ public class HCFG extends DiGraph<Stmt,Stmt,nl.uu.maze.util.HCFG.HCFGNodeType,St
 	 */
 	public static int cover(List<Integer> execHistory, List<Integer> sigma) {
 		if (sigma.isEmpty())
-			throw new IllegalArgumentException() ;
+			throw new IllegalArgumentException("target sigma has empty encoded-path") ;
 		if (execHistory == null || execHistory.isEmpty())
 			return -1 ;
 		int sigmaStart = sigma.get(0) ;
@@ -357,7 +357,10 @@ public class HCFG extends DiGraph<Stmt,Stmt,nl.uu.maze.util.HCFG.HCFGNodeType,St
 	 */
 	public List<HCFGPath> getMaxElementaryPaths2(int k) {
 		var paths = this.getMaxElementaryPaths(k) ;
-		return paths.stream().map(sigma -> new HCFGPath(sigma)).toList() ;
+		return paths.stream()
+				.map(sigma -> new HCFGPath(sigma))
+				.filter(sigma -> ! sigma.encoded.isEmpty())
+				.toList() ;
 	}
 	
 	/**
@@ -399,7 +402,7 @@ public class HCFG extends DiGraph<Stmt,Stmt,nl.uu.maze.util.HCFG.HCFGNodeType,St
 	}
 	
 	/**
-	 * The distance from the stmt to the first node in the given target
+	 * The distance from the stmt to the head (first node) of the given target
 	 * path.  Distance is defined as in {@link #dist(Stmt, DiGraphNode)}.
 	 */
 	public int distToPathHead(Stmt stmt, HCFGPath sigma) {

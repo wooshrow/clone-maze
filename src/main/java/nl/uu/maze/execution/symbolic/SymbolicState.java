@@ -138,6 +138,7 @@ public class SymbolicState implements SearchTarget {
         this.paramTypes = new HashMap<>();
         this.newCoverageDepths = new ArrayList<>();
         this.branchHistory = new ArrayList<>() ;
+        this.updateTargetPathStatus();
     }
 
     /*
@@ -169,6 +170,9 @@ public class SymbolicState implements SearchTarget {
         this.isFinalState = state.isFinalState;
         this.exceptionThrown = state.exceptionThrown;
         this.isInfeasible = state.isInfeasible;
+        if (state.targetpath != null) {
+        	targetpath = new TargetPath(state.targetpath) ;
+        }
     }
 
     public boolean isCtorState() {
@@ -393,52 +397,118 @@ public class SymbolicState implements SearchTarget {
      * is reachable from this.stmt. No particular selection is made
      * of which path to take in case there are multiple choices.
      */
-    private TargetPath findReachableTargetPath(HCFG hcfg) {
+    private TargetPath findReachableTargetPath(Stmt stmt, HCFG hcfg) {
     	var targets = CoverageTracker.getInstance().stillUncoveredTargetPaths.get(hcfg) ;
+    	// check first if there is a sigma that is covered or partially covered:
     	for (var sigma : targets) {
-    		var dist = hcfg.distToPathHead(stmt, sigma) ;
+    		var k = sigma.coverBy(branchHistory) ;
+    		if (k < 0) continue ;
+    		var T = new TargetPath(sigma) ;
+    		if (k == 0) {
+        		T.status = TargetPathStatus.TARGET_COVERED ;
+        		T.hdist = hcfg.distToExit(stmt) ;
+        	}
+        	else {
+        		T.status = TargetPathStatus.TARGET_PARTIALLY_COVERED ;
+        		T.hdist = k ;
+        	}
+    		return T ;
+    	}
+    	
+    	// else we check if there is a reachable target:
+    	for (var sigma : targets) {		
+    		var dist = hcfg.distToPathHead(stmt,sigma) ;
     		if (dist >= 0) {
     			var T = new TargetPath(sigma) ;
     			T.status = TargetPathStatus.APPROACHING_TARGET ;
+    			T.hdist = dist ;
     			return T ;
     		}
     	}
-		return  new TargetPath() ;
+    	// else there is no reachable targets
+		var T = new TargetPath() ;
+		T.hdist = hcfg.distToExit(stmt) ;
+		return T ;
     }
     
     public void updateTargetPathStatus() {
     	var hcfg = CoverageTracker.getInstance().getHCFG(method) ;
     	if (hcfg == null && targetpath == null) {
     		targetpath = new TargetPath() ;
+    		// if hcfg is null, we can't get estimation on distance to
+    		// exit.. so, just set it to maxint??
+    		// there no easy solution for this ...
+    		targetpath.hdist = Integer.MAX_VALUE ;
 			return ;
     	}
 		if (targetpath == null) {
-			targetpath = findReachableTargetPath(hcfg) ;
+			// hcfg is not null
+			targetpath = findReachableTargetPath(stmt,hcfg) ;
 			return ;
     	}
 		// both hcfg and targetpath are not null:
 		
+		// first check whether the target is still open:
+		// NOTE: the logic can be optimized. If we know no tests have been
+		// generated, then there is no need to check this. But this is a bit
+		// tricky to check...
+		boolean targetStillOpen = CoverageTracker.getInstance().stillUncoveredTargetPaths.get(hcfg).contains(targetpath.targetpath) ; ;
+		if (! targetStillOpen){
+			// find a new target
+			targetpath = findReachableTargetPath(stmt,hcfg) ;	
+			return ;
+		}
+		
+		// target is till open, so we update towards it:
+		System.out.println(">>> updateTargetPathStatus ") ;
+		System.out.println("    target: " + targetpath.targetpath + ", " + targetpath.status) ;
+		System.out.println("    bhist : " + this.branchHistory) ;
+		System.out.println("    HDIST : " + targetpath.hdist) ;
+		
     	switch (targetpath.status) {
-    	case TARGET_COVERED : return ;
+    	case TARGET_COVERED : 
+    		targetpath.hdist = hcfg.distToExit(stmt) ;
+    		return ;
+    		
     	case TARGET_PARTIALLY_COVERED :
     		var k = targetpath.targetpath.coverBy(branchHistory) ;
+    		if (k < 0) {
+    			// the path deviates from target! 
+    			targetpath = findReachableTargetPath(stmt,hcfg) ;	
+        		return ;
+    		}
     		if (k == 0) {
     			targetpath.status = TargetPathStatus.TARGET_COVERED ;
-    			break ;
+    			targetpath.hdist = hcfg.distToExit(stmt) ;
     		}
-    		else if (k > 0 ) {
-    			break ;
+    		else {
+    			targetpath.hdist = k ;
     		}
-    		// else k<0 ... the path deviates from target!
-    		targetpath = findReachableTargetPath(hcfg) ;
-    		break ;
+    		return ;
+    		
     	case APPROACHING_TARGET :
+    		if (targetpath.hdist == 0) {
+    			// execution is approaching or at the target head, but we
+    			// don't know exactly how far. Use branc-hhistory to check
+    			// if it is at the head or first edge of the target.
+    			// IMPORTANT: check via branch first before re-checking via
+    			// distToPathHead
+    			k = targetpath.targetpath.coverBy(branchHistory) ;
+    			if (k>=0) {
+    				targetpath.status = TargetPathStatus.TARGET_PARTIALLY_COVERED ;
+    				targetpath.hdist = k ;
+    				return ;
+    			}
+    		}
     		var dist = hcfg.distToPathHead(stmt, targetpath.targetpath) ;
-    		if (dist >= 0) break ;
-    		targetpath = findReachableTargetPath(hcfg) ;
-    		break ;
+    		targetpath.hdist = dist ;
+    		if (dist >= 0) {
+    			return ;
+    		}
+    		// dist negative, so target is no longer reachable:
+    		targetpath = findReachableTargetPath(stmt,hcfg) ;
+    		return ;
     	}
-    	
     }
     
     /**

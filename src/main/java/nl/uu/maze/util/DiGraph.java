@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
-import nl.uu.maze.util.HighLevelCFG.HCFGNode;
 
 /**
  * Generic representation of a directed graph, with a single entry node.

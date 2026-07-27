@@ -2,7 +2,7 @@ package nl.uu.tests.maze;
 
 import org.junit.jupiter.api.Test;
 
-import nl.uu.maze.util.HighLevelCFG;
+import nl.uu.maze.util.HCFG;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -24,28 +24,28 @@ public class HCFGPathTest {
 	public void test_cover() {	
 		int[] hist = {1, 2, 4, 2, 3, 2, 3, 5, 1} ;
 		int[] sigma = {2, 3, 5} ;
-		assertTrue(HighLevelCFG.cover(toList(hist), toList(sigma)) == 0) ;
+		assertTrue(HCFG.cover(toList(hist), toList(sigma)) == 0) ;
 	}
 	
 	@Test
 	public void test_nocover() {
 		int[] hist = {1, 2, 4, 2, 3, 2, 3, 1} ;
 		int[] sigma = {2, 3, 5} ;
-		assertTrue(HighLevelCFG.cover(toList(hist), toList(sigma)) == -1) ;
+		assertTrue(HCFG.cover(toList(hist), toList(sigma)) == -1) ;
 	}
 	
 	@Test
 	public void test_partialcover1() {
 		int[] hist = {1, 2, 4, 2, 1, 2, 3} ;
 		int[] sigma = {2, 3, 5} ;
-		assertTrue(HighLevelCFG.cover(toList(hist), toList(sigma)) == 1) ;
+		assertTrue(HCFG.cover(toList(hist), toList(sigma)) == 1) ;
 	}
 	
 	@Test
 	public void test_partialcover2() {
 		int[] hist = {1, 2, 4, 2, 3, 1, 2} ;
 		int[] sigma = {2, 3, 5} ;
-		assertTrue(HighLevelCFG.cover(toList(hist), toList(sigma)) == 2) ;
+		assertTrue(HCFG.cover(toList(hist), toList(sigma)) == 2) ;
 	}
 
 }

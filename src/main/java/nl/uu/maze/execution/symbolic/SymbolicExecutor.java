@@ -1,6 +1,7 @@
 package nl.uu.maze.execution.symbolic;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -81,30 +82,43 @@ public class SymbolicExecutor {
         	state.recordIfExitStmt(stmt);
         	state.recordIfExceptiomHead(stmt);
         	
+        	List<SymbolicState> nextStates = null ;
+        	
             switch (stmt) {
                 case JIfStmt jIfStmt -> {
-                    return handleIfStmt(jIfStmt, state, replay);
+                	nextStates = handleIfStmt(jIfStmt, state, replay);
+                	break ;
                 }
                 case JSwitchStmt jSwitchStmt -> {
-                    return handleSwitchStmt(jSwitchStmt, state, replay);
+                	nextStates =  handleSwitchStmt(jSwitchStmt, state, replay);
+                	break ;
                 }
                 case AbstractDefinitionStmt abstractDefinitionStmt -> {
-                    return handleDefStmt(abstractDefinitionStmt, state, replay);
+                	nextStates = handleDefStmt(abstractDefinitionStmt, state, replay);
+                	break ;
                 }
                 case JInvokeStmt ignored -> {
-                    return handleInvokeStmt(stmt.getInvokeExpr(), state, replay);
+                	nextStates = handleInvokeStmt(stmt.getInvokeExpr(), state, replay);
+                	break ;
                 }
                 case JThrowStmt ignored -> {
                     state.setExceptionThrown();
-                    return handleOtherStmts(state, replay);
+                    nextStates = handleOtherStmts(state, replay);
+                    break ;
                 }
                 case JReturnStmt jReturnStmt -> {
-                    return handleReturnStmt(jReturnStmt, state, replay);
+                	nextStates = handleReturnStmt(jReturnStmt, state, replay);
+                	break ;
                 }
                 default -> {
-                    return handleOtherStmts(state, replay);
+                	nextStates = handleOtherStmts(state, replay);
+                	break ;
                 }
             }
+            for (var st2 : nextStates) {
+            	st2.updateTargetPathStatus();
+            }
+            return nextStates ;
         } catch (Exception e) {
             // If an exception is thrown, set the state as exceptional and return it
             // That way, a test case is generated for the path up to this point, even if we

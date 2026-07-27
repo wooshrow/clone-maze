@@ -33,7 +33,6 @@ import nl.uu.maze.search.strategy.DFS;
 import nl.uu.maze.search.strategy.SearchStrategy;
 import nl.uu.maze.search.strategy.SymbolicSearchStrategy;
 import nl.uu.maze.util.BranchStmtUtil;
-import nl.uu.maze.util.HighLevelCFG;
 import nl.uu.maze.util.Pair;
 import sootup.core.graph.StmtGraph;
 import sootup.core.jimple.common.stmt.Stmt;

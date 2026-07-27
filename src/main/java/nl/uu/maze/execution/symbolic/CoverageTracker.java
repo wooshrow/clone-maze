@@ -90,6 +90,11 @@ public class CoverageTracker {
      * We store them so we can know when to record their visit into the branch history.
      */
     private Set<Stmt> exitStmts = new HashSet<>() ;
+    
+    /**
+     * True, if the coverage information is just updated by a test via {@link #registerCoveregeByTesting(SymbolicState, InstructionHistory)}.
+     */
+    private boolean dirty = false ;
 
     private CoverageTracker() {
         // Use identity hash map to avoid potentially expensive equals() calls on
@@ -251,9 +256,28 @@ public class CoverageTracker {
             	targets.removeAll(covered) ;
         	}
     	}
+    	if (hasNewCoverage) dirty = true ;
     	return hasNewCoverage ;
     }
     
+    /**
+     * True, if the coverage information is just updated by a test via {@link #registerCoveregeByTesting(SymbolicState, InstructionHistory)}.
+     * If it is false, it means that the coverage information has not changed
+     * since there has not been a new test being registered. Note that this concerns
+     * only test-coverage tracking information. The flag has no bearing towards 
+     * exloration-coverage information stored in {@link #coveredStmts_byExpl}.
+     */
+    public boolean isDirty() {
+    	return dirty ;
+    }
+    
+    /**
+     * Reset the flag {@link #dirty} to false (so... not dirty). 
+     */
+    public boolean cleanDirtyFlag() {
+    	dirty = true ;
+    	return dirty ;
+    }
     
     /**
      * Get the number of target statements to cover by testing.
