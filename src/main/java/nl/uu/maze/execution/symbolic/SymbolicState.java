@@ -452,18 +452,21 @@ public class SymbolicState implements SearchTarget {
 		// NOTE: the logic can be optimized. If we know no tests have been
 		// generated, then there is no need to check this. But this is a bit
 		// tricky to check...
-		boolean targetStillOpen = CoverageTracker.getInstance().stillUncoveredTargetPaths.get(hcfg).contains(targetpath.targetpath) ; ;
-		if (! targetStillOpen){
-			// find a new target
-			targetpath = findReachableTargetPath(stmt,hcfg) ;	
-			return ;
+		if (CoverageTracker.getInstance().isDirty()) {
+			boolean targetStillOpen = CoverageTracker.getInstance().stillUncoveredTargetPaths.get(hcfg).contains(targetpath.targetpath) ; ;
+			if (! targetStillOpen){
+				// find a new target
+				targetpath = findReachableTargetPath(stmt,hcfg) ;	
+				return ;
+			}
 		}
 		
+		
 		// target is till open, so we update towards it:
-		System.out.println(">>> updateTargetPathStatus ") ;
-		System.out.println("    target: " + targetpath.targetpath + ", " + targetpath.status) ;
-		System.out.println("    bhist : " + this.branchHistory) ;
-		System.out.println("    HDIST : " + targetpath.hdist) ;
+		//System.out.println(">>> updateTargetPathStatus ") ;
+		//System.out.println("    target: " + targetpath.targetpath + ", " + targetpath.status) ;
+		//System.out.println("    bhist : " + this.branchHistory) ;
+		//System.out.println("    HDIST : " + targetpath.hdist) ;
 		
     	switch (targetpath.status) {
     	case TARGET_COVERED : 
@@ -555,6 +558,10 @@ public class SymbolicState implements SearchTarget {
      */
     public List<Integer> getBranchHistory() {
         return this.branchHistory ;
+    }
+    
+    public TargetPath getTargetPath() {
+    	return this.targetpath ;
     }
     
     public void setIteration(int iteration) {

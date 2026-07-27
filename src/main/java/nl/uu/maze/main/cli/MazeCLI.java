@@ -89,7 +89,7 @@ public class MazeCLI implements Callable<Integer> {
     @Option(names = { "--minimalistic-suite" }, description = "When true: only tests that add new stmt or branch coverage are generated (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean minimalisticTestSuite;
     
-    @Option(names = { "--path-length-cov" }, description = "Length of elementary paths whose coverage will be tracked (default: ${DEFAULT-VALUE})", defaultValue = "1", paramLabel = "<int>")
+    @Option(names = { "--path-length-cov" }, description = "If non-zero, the length of elementary paths to cover. If -1, prime paths. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<int>")
     private int pathLengthCoverage;
 
     @Option(names = { "--constrain-FP-params-to-normal-numbers" }, description = "When true will constrain the symbolic solver to generate normal numbers for floating-point-like methods parameters (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")

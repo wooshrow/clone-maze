@@ -67,14 +67,16 @@ public class CobaMaze {
 				      //+ sp + "-C"
 				      // + sp + "-j=JUnit4"
 				      //+ sp + "-s=RPS" 
-				      + sp + "-s=COS"
+				      //+ sp + "-s=COS"
 				      //+ sp + "-s=PS" + sp + "-u=DTUH"
 				      //+ sp + "-m=isComplexValidTreeHelper"
 				      //+ sp + "-s=BFS"
+				      + sp + "-s=PCS"
+				      
 				      
 				      + sp + "--minimalistic-suite=true"
-				      + sp + "--path-length-cov=2"
-				      + sp + "-b=60"
+				      + sp + "--path-length-cov=-1"
+				      + sp + "-b=20"
 				      //+ sp + "-l=DEBUG" // log level
 				      //+ sp + "--max-depth=100"
 				      + sp + "--max-array-size=20"

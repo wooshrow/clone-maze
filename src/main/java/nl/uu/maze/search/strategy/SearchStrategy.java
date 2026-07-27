@@ -94,7 +94,7 @@ public abstract class SearchStrategy<T extends SearchTarget> {
      */
     public abstract Collection<T> getAll();
 
-    /** Whether this search strategy requires data about statement coverage. */
+    /** Whether this search strategy requires data about coverage. */
     public boolean requiresCoverageData() {
         return false;
     }

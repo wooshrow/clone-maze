@@ -260,7 +260,8 @@ public class DSEController {
         	logger.info("statement-converage (by test): " + stmtCovered + "/" + stmtTargets) ;
         	logger.info("branch-converage    (by test): " + branchCovered + "/" + branchTargets
         			+ ", #untargeted-branches covered: " + untargetdBranchCovered) ;
-        	if (EngineConfiguration.getInstance().pathLengthCoverage >= 2)
+        	if (EngineConfiguration.getInstance().pathLengthCoverage == -1
+        			|| EngineConfiguration.getInstance().pathLengthCoverage >= 1)
         		logger.info("k-path-converage    (by test): " + pathCovered + "/" + pathTargets) ;
         	
         	
@@ -269,6 +270,8 @@ public class DSEController {
             if (generator.getNumberOfViolationFound() > 0) {
             	logger.info("There were {} test/s that threw an unexpected exception. They may be errors.",  generator.getNumberOfViolationFound()) ;
             }
+            
+            CoverageTracker.getInstance().debugPrintCoveredPaths();
             
         }
     }

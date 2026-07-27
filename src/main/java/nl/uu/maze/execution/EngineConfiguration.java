@@ -102,20 +102,22 @@ public class EngineConfiguration {
       * the MAZE engine.
       * 
       * <p>When the option {@link #minimalisticTestSuite} is enabled, and
-      * the value of enablePathCoverage is k >= 2, whenever a test is found
+      * the value of enablePathCoverage is k >= 1, whenever a test is found
       * that covers target path of length k, which has not been covered before,
       * the test will be actually be generated as aJUnit test-method. As there are
       * usually more paths of length k than the number of branches, this option 
       * may thus cause more tests to be generated (though on the other hand, it is
       * the also more thorough).
       * 
-      * <p>If {@link #minimalisticTestSuite}, then it matters less, as the engine
-      * will convert any completed path to a test, regardless whether it gives
-      * new coverage or not.
+      * <p>When k=-1, prime paths will be targeted.
       * 
-      * <p>Default: 1.
+      * <p>If {@link #minimalisticTestSuite} is not set, then this setting matters less, 
+      * as the engine will convert any completed path to a test, regardless 
+      * whether it gives new coverage or not.
+      * 
+      * <p>Default: 0.
       */
-     public int pathLengthCoverage = 1 ;
+     public int pathLengthCoverage = 0 ;
     
     /**
      * Get a fresh random generator, using {@link #globalRandomSeed} as the seed, if it is

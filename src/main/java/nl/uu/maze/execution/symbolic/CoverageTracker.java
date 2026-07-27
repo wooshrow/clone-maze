@@ -135,9 +135,9 @@ public class CoverageTracker {
     		hcfg.saveAsDot(null);
     	}
     	catch(Exception e) { }
-    	// for now we'll target edge-pairs:
+    	
     	int k = EngineConfiguration.getInstance().pathLengthCoverage ;
-    	if (k>=1) {
+    	if (k==-1 || k>=1) {
     		var targets = hcfg.getMaxElementaryPaths2(k) ;
     		targetPaths.put(hcfg, targets) ;
         	List<HCFGPath> targets__ = new LinkedList<>() ;
@@ -157,7 +157,12 @@ public class CoverageTracker {
     	
     	System.out.println(">>>> #targets = " + this.numberOfTargetPaths()) ;
         for (var T : targetPaths.entrySet()) {
-        	System.out.println("   * " + T.getKey().method.getName() + ": " + T.getValue()) ;
+        	int i = 0 ;
+        	System.out.println("   * " + T.getKey().method.getName()) ;
+        	for (var sigma : T.getValue()) {
+            	System.out.println("    " + i + ": " + sigma) ;
+        		i++ ;
+        	}
         }
     	/*
     	System.out.println(method.getSignature());
@@ -239,8 +244,9 @@ public class CoverageTracker {
     	}
     	
     	// register target paths covered by state.branchhistory; only relevant for
-    	// k>=1:
-    	if (EngineConfiguration.getInstance().pathLengthCoverage >= 1) {
+    	// k=-1 or k>=1:
+    	if (EngineConfiguration.getInstance().pathLengthCoverage == -1
+    		|| EngineConfiguration.getInstance().pathLengthCoverage >= 1) {
     		var sigma = state.getBranchHistory() ;
         	for (var Z : this.stillUncoveredTargetPaths.entrySet()) {
         		var targets = Z.getValue() ;
@@ -275,7 +281,7 @@ public class CoverageTracker {
      * Reset the flag {@link #dirty} to false (so... not dirty). 
      */
     public boolean cleanDirtyFlag() {
-    	dirty = true ;
+    	dirty = false ;
     	return dirty ;
     }
     
@@ -353,5 +359,25 @@ public class CoverageTracker {
         stillUncoveredTargetPaths.clear(); 
         exitStmts.clear(); 
         exceptionHandlerHeads.clear(); 
+    }
+    
+    public void debugPrintCoveredPaths() {
+    	System.out.println(">>>> debugPrintCoveredPaths") ;
+    	for (var P : this.targetPaths.entrySet()) {
+    		var missed = this.stillUncoveredTargetPaths.get(P.getKey()) ;
+            System.out.println(">>>> method = " + P.getKey().name + ", COVERED:") ;
+            int i = 1 ;
+            for (var sigma : P.getValue()) {
+            	if (missed.contains(sigma)) continue ;
+                System.out.println("       " + i + ": " + sigma) ;
+            	i++ ;
+            }
+            System.out.println(">>>> method = " + P.getKey().name + ", MISSED:") ;
+            i = 1 ;
+            for (var sigma : missed) {
+                System.out.println("       " + i + ": " + sigma) ;
+            	i++ ;
+            }
+    	}
     }
 }
