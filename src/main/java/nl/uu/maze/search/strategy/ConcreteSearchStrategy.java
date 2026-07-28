@@ -170,12 +170,7 @@ public class ConcreteSearchStrategy extends SearchStrategy<PathConditionCandidat
     }
 
     @Override
-    public boolean requiresCoverageData() {
-        return strategy.requiresCoverageData();
-    }
-
-    @Override
-    public boolean requiresBranchHistoryData() {
-        return strategy.requiresBranchHistoryData();
+    public boolean requiresPathTargetingAndTracking() {
+        return strategy.requiresPathTargetingAndTracking();
     }
 }

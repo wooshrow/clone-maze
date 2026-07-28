@@ -25,16 +25,10 @@ public class PathCoverSearch extends SearchStrategy<SymbolicState> {
 	public String getName() {
 		return "PathCoverSearch" ;
 	}
-	
-	 /** Whether this search strategy requires data about coverage. */
-	@Override
-    public boolean requiresCoverageData() {
-        return true;
-    }
 
-    /** Whether this search strategy requires data about branch history. */
+
 	@Override
-    public boolean requiresBranchHistoryData() {
+    public boolean requiresPathTargetingAndTracking() {
         return true;
     }
 

@@ -108,8 +108,4 @@ public class SubpathGuidedSearch<T extends SearchTarget> extends SearchStrategy<
         return targets;
     }
 
-    @Override
-    public boolean requiresBranchHistoryData() {
-        return true;
-    }
 }

@@ -44,11 +44,6 @@ public class DistanceToUncoveredHeuristic extends SearchHeuristic {
     }
 
     @Override
-    public boolean requiresCoverageData() {
-        return true;
-    }
-
-    @Override
     public <T extends SearchTarget> double calculateWeight(T target) {
         return applyExponentialScaling(calculateDistance(target), 0.1, false);
     }

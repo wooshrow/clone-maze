@@ -58,13 +58,9 @@ public class SymbolicSearchStrategy extends SearchStrategy<SymbolicState> {
         return strategy.getAll();
     }
 
-    @Override
-    public boolean requiresCoverageData() {
-        return strategy.requiresCoverageData();
-    }
 
     @Override
-    public boolean requiresBranchHistoryData() {
-        return strategy.requiresBranchHistoryData();
+    public boolean requiresPathTargetingAndTracking() {
+        return strategy.requiresPathTargetingAndTracking();
     }
 }

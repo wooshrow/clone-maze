@@ -245,24 +245,25 @@ public class CoverageTracker {
     	
     	// register target paths covered by state.branchhistory; only relevant for
     	// k=-1 or k>=1:
-    	if (EngineConfiguration.getInstance().pathLengthCoverage == -1
-    		|| EngineConfiguration.getInstance().pathLengthCoverage >= 1) {
+    	int k = EngineConfiguration.getInstance().pathLengthCoverage ;
+    	if (k == -1 || k >= 1) {
     		var sigma = state.getBranchHistory() ;
-        	for (var Z : this.stillUncoveredTargetPaths.entrySet()) {
-        		var targets = Z.getValue() ;
-        		List<HCFGPath> covered = new LinkedList<>() ;
+    		HCFG hcfg = getHCFG(state.getMethod()) ;
+    		if (hcfg != null) {
+    			var targets = this.stillUncoveredTargetPaths.get(hcfg) ;
+    			List<HCFGPath> covered = new LinkedList<>() ;
             	for (var tau : targets) {
         		   	if (tau.coverBy(sigma) == 0) {
         		   		covered.add(tau) ;
         		   	}
         		}
-            	if (covered.size() > 0 && EngineConfiguration.getInstance().minimalisticTestSuite) {
-            		hasNewCoverage = true ;
-            	}
+            	if (covered.size() > 0) hasNewCoverage = true ;
             	targets.removeAll(covered) ;
-        	}
+    		}
     	}
+    	
     	if (hasNewCoverage) dirty = true ;
+    	
     	return hasNewCoverage ;
     }
     

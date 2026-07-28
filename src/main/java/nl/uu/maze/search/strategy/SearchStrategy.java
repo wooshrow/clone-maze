@@ -94,13 +94,12 @@ public abstract class SearchStrategy<T extends SearchTarget> {
      */
     public abstract Collection<T> getAll();
 
-    /** Whether this search strategy requires data about coverage. */
-    public boolean requiresCoverageData() {
-        return false;
-    }
-
-    /** Whether this search strategy requires data about branch history. */
-    public boolean requiresBranchHistoryData() {
+    /** 
+     * Whether this search strategy requires the engine to calculate for
+     * every symbolic state, what is an uncovered target path (e.g. an edge
+     * or an edge-pair) reachable from that state.
+     *  */
+    public boolean requiresPathTargetingAndTracking() {
         return false;
     }
 

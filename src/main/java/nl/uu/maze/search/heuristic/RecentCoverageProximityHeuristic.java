@@ -26,11 +26,6 @@ public class RecentCoverageProximityHeuristic extends SearchHeuristic {
     }
 
     @Override
-    public boolean requiresCoverageData() {
-        return true;
-    }
-
-    @Override
     public <T extends SearchTarget> double calculateWeight(T target) {
         int targetDepth = target.getDepth();
         List<Integer> coverageDepths = target.getNewCoverageDepths();

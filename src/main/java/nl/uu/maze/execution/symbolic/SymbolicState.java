@@ -97,6 +97,8 @@ public class SymbolicState implements SearchTarget {
      */
     private final List<Integer> branchHistory;
     
+    private Map<HCFG,List<List<Integer>>> indirectBranchHistories;
+    
     
     /**
      * If not null, this is a target path that the execution towards this symbolic
@@ -138,6 +140,7 @@ public class SymbolicState implements SearchTarget {
         this.paramTypes = new HashMap<>();
         this.newCoverageDepths = new ArrayList<>();
         this.branchHistory = new ArrayList<>() ;
+        this.indirectBranchHistories = new HashMap<>() ;
         this.updateTargetPathStatus();
     }
 
@@ -398,7 +401,7 @@ public class SymbolicState implements SearchTarget {
      * of which path to take in case there are multiple choices.
      */
     private TargetPath findReachableTargetPath(Stmt stmt, HCFG hcfg) {
-    	var targets = CoverageTracker.getInstance().stillUncoveredTargetPaths.get(hcfg) ;
+    	var targets = coverageTracker.stillUncoveredTargetPaths.get(hcfg) ;
     	// check first if there is a sigma that is covered or partially covered:
     	for (var sigma : targets) {
     		var k = sigma.coverBy(branchHistory) ;
@@ -432,7 +435,7 @@ public class SymbolicState implements SearchTarget {
     }
     
     public void updateTargetPathStatus() {
-    	var hcfg = CoverageTracker.getInstance().getHCFG(method) ;
+    	var hcfg = coverageTracker.getHCFG(method) ;
     	if (hcfg == null && targetpath == null) {
     		targetpath = new TargetPath() ;
     		// if hcfg is null, we can't get estimation on distance to
@@ -453,7 +456,7 @@ public class SymbolicState implements SearchTarget {
 		// generated, then there is no need to check this. But this is a bit
 		// tricky to check...
 		if (CoverageTracker.getInstance().isDirty()) {
-			boolean targetStillOpen = CoverageTracker.getInstance().stillUncoveredTargetPaths.get(hcfg).contains(targetpath.targetpath) ; ;
+			boolean targetStillOpen = coverageTracker.stillUncoveredTargetPaths.get(hcfg).contains(targetpath.targetpath) ; ;
 			if (! targetStillOpen){
 				// find a new target
 				targetpath = findReachableTargetPath(stmt,hcfg) ;	

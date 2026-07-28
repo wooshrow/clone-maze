@@ -86,11 +86,6 @@ public class ProbabilisticSearch<T extends SearchTarget> extends SearchStrategy<
         return targets;
     }
 
-    @Override
-    public boolean requiresCoverageData() {
-        return heuristics.stream().anyMatch(SearchHeuristic::requiresCoverageData);
-    }
-
     /**
      * Selects and removes a target from the list based on a weighted combination of
      * the given heuristics.

@@ -34,14 +34,6 @@ public abstract class SearchHeuristic {
     public abstract String getName();
 
     /**
-     * Whether this heuristic requires coverage data to calculate weights.
-     * Defaults to {@code false}.
-     */
-    public boolean requiresCoverageData() {
-        return false;
-    }
-
-    /**
      * Calculates the weight of a target based on this heuristic.
      *
      * @param <T>    The type of target to evaluate

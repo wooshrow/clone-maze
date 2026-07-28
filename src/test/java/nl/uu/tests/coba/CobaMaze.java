@@ -71,15 +71,15 @@ public class CobaMaze {
 				      //+ sp + "-s=PS" + sp + "-u=DTUH"
 				      //+ sp + "-m=isComplexValidTreeHelper"
 				      //+ sp + "-s=BFS"
-				      + sp + "-s=PCS"
+				      //+ sp + "-s=PCS"
 				      
 				      
 				      + sp + "--minimalistic-suite=true"
 				      + sp + "--path-length-cov=-1"
-				      + sp + "-b=20"
+				      + sp + "-b=60"
 				      //+ sp + "-l=DEBUG" // log level
 				      //+ sp + "--max-depth=100"
-				      + sp + "--max-array-size=20"
+				      + sp + "--max-array-size=5"
 				      + sp + "--constrain-FP-params-to-normal-numbers=true"
 				      + sp + "--check-divbyZero"
 				      //+ sp + "--surpress-regression-oracles=false"
