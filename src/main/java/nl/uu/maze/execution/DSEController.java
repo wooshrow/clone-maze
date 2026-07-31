@@ -33,6 +33,7 @@ import nl.uu.maze.search.strategy.DFS;
 import nl.uu.maze.search.strategy.SearchStrategy;
 import nl.uu.maze.search.strategy.SymbolicSearchStrategy;
 import nl.uu.maze.util.BranchStmtUtil;
+import nl.uu.maze.util.HCFG;
 import nl.uu.maze.util.Pair;
 import sootup.core.graph.StmtGraph;
 import sootup.core.jimple.common.stmt.Stmt;
@@ -182,7 +183,7 @@ public class DSEController {
             	
             	if (!method.isPublic()) {
             		// but coverage over non-public methods are still tracked
-            		CoverageTracker.getInstance().addTargets(method) ;
+            		CoverageTracker.getInstance().addTarget(method) ;
                     //System.out.println(">>> " + method.getName() + "\n" + method.getBody()) ;
             	}
             	
@@ -195,9 +196,7 @@ public class DSEController {
             } else {
                 nonStaticMuts.add(method);
             }
-            CoverageTracker.getInstance().addTargets(method) ;
-            logger.info("Adding " + method.getName() + " as a target, #stmts:" + method.getBody().getStmts().size()) ;
-            System.out.println(">>> " + method.getName() + "\n" + method.getBody()) ;
+            CoverageTracker.getInstance().addTarget(method) ;
             //debugPrintCFGs(method) ;
             //var HCFG = new HighLevelCFG(method) ;
             //System.out.println(">>>> HCFG: " + HCFG) ;
@@ -229,7 +228,7 @@ public class DSEController {
             ctorSoot = analyzer.getSootConstructor(methods, ctor);
             ctorCfg = analyzer.getCFG(ctorSoot);
             initStates = new HashMap<>();
-            CoverageTracker.getInstance().addTargets(ctorSoot) ;
+            CoverageTracker.getInstance().addTarget(ctorSoot) ;
             logger.info("Using constructor: {}, #stmts:{}", 
             		ctorSoot.getSignature(),
             		ctorSoot.getBody().getStmts().size());
@@ -256,7 +255,9 @@ public class DSEController {
         	int branchCovered = branchTargets - CoverageTracker.getInstance().numberOfStillUnCoveredBranches() ;
         	int untargetdBranchCovered = CoverageTracker.getInstance().numberOfCoveredUntargetedBrances() ;
         	int pathTargets = CoverageTracker.getInstance().numberOfTargetPaths() ;
-        	int pathCovered = pathTargets - CoverageTracker.getInstance().numberOfStillUncoveredTargetPaths() ;
+        	int pathCovered = pathTargets 
+        			- CoverageTracker.getInstance().numberOfStillUncoveredTargetPaths() 
+        			- CoverageTracker.getInstance().numberOfDroppedTargetPaths() ;
         	logger.info("statement-converage (by test): " + stmtCovered + "/" + stmtTargets) ;
         	logger.info("branch-converage    (by test): " + branchCovered + "/" + branchTargets
         			+ ", #untargeted-branches covered: " + untargetdBranchCovered) ;
@@ -401,7 +402,7 @@ public class DSEController {
             }
         } catch (Exception e) {
             logger.error("Error generating test case for method {}: {}, {}", state.getMethod().getName(), e.getClass().getName(), e.getMessage());
-            logger.debug("Error stack trace: ", e);
+            logger.info("Error stack trace: ", e);
             
         }
     }
@@ -439,6 +440,7 @@ public class DSEController {
      */
     private Optional<SymbolicState> runSymbolicDriven(SymbolicSearchStrategy searchStrategy,
             JavaSootMethod targetMethod) {
+    	
         SymbolicState current;
         
         while ((current = searchStrategy.next()) != null) {
@@ -522,6 +524,14 @@ public class DSEController {
                                 target.getExceptionSignatures() ;
                                 // Clone state, except for the last one
                                 SymbolicState newState = i == nonStaticMuts.size() - 1 ? state : state.clone();
+                                
+                                // add the branch-hist of the constructor to indirect branch-hist of the new state:
+                                HCFG hcfg = CoverageTracker.getInstance().getHCFG(state.getMethod()) ;
+                                if (hcfg != null) {
+                                	newState.getIndirectBranchHistories().add(new Pair<>(hcfg,state.getBranchHistory())) ;
+                                	newState.getBranchHistory().clear() ;
+                                }
+                                
                                 newState.setMethod(target, analyzer.getCFG(target));
                                 searchStrategy.add(newState);
 

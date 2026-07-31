@@ -79,8 +79,7 @@ public class SymbolicExecutor {
         try {
         	
         	state.recordStmtCoverageByExpl();
-        	state.recordIfExitStmt(stmt);
-        	state.recordIfExceptiomHead(stmt);
+        	state.recordIfNonBranchingNodeHead(stmt);
         	
         	List<SymbolicState> nextStates = null ;
         	
@@ -115,9 +114,6 @@ public class SymbolicExecutor {
                 	break ;
                 }
             }
-            for (var st2 : nextStates) {
-            	st2.updateTargetPathStatus();
-            }
             return nextStates ;
         } catch (Exception e) {
             // If an exception is thrown, set the state as exceptional and return it
@@ -125,7 +121,7 @@ public class SymbolicExecutor {
             // didn't finish exploring the path
         	//System.out.println("### STATE: " + state) ;
             logger.error("Exception thrown during symbolic execution: {}", e.getMessage());
-            //logger.error("Exception stack trace: ", e);
+            logger.error("Exception stack trace: ", e);
             state.setExceptionThrown();
             return List.of(state);
         }
@@ -556,24 +552,24 @@ public class SymbolicExecutor {
                 state.setFinalState();
                 return List.of(state);
             }
-            SymbolicState caller = state.returnToCaller();
-
+            SymbolicState callerState = state.returnToCaller();
+            
             // If the caller state is a definition statement, we still need to complete the
             // assignment using the return value of the method that just finished execution
-            if (caller.getStmt() instanceof AbstractDefinitionStmt) {
+            if (callerState.getStmt() instanceof AbstractDefinitionStmt) {
                 Expr<?> returnValue = state.getReturnValue();
-                caller.setReturnValue(returnValue);
+                callerState.setReturnValue(returnValue);
                 if (state.heap.getArrayIndices("return") != null) {
-                    caller.heap.setArrayIndices("return", state.heap.getArrayIndices("return"));
+                    callerState.heap.setArrayIndices("return", state.heap.getArrayIndices("return"));
                 }
                 // If return value is a reference, link the heap object
                 if (returnValue != null && sorts.isRef(returnValue)) {
-                    caller.heap.linkHeapObject(returnValue, state.heap);
+                    callerState.heap.linkHeapObject(returnValue, state.heap);
                 }
-                return handleDefStmt((AbstractDefinitionStmt) caller.getStmt(), caller, replay);
+                return handleDefStmt((AbstractDefinitionStmt) callerState.getStmt(), callerState, replay);
             }
 
-            return handleOtherStmts(caller, replay);
+            return handleOtherStmts(callerState, replay);
         }
 
         // If the state is exceptional, only follow successors that are catch blocks,

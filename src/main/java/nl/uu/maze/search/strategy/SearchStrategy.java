@@ -80,6 +80,9 @@ public abstract class SearchStrategy<T extends SearchTarget> {
      */
     public abstract int size();
     
+	/**
+	 * Return the total number of search targets explored so far.
+	 */
     public int getTotalExploredCount() {
     	return count ;
     }

@@ -201,7 +201,7 @@ public class MethodInvoker {
     /** Execute a method call concretely. */
     private void executeConcrete(SymbolicState state, AbstractInvokeExpr expr, Local base, boolean storeResult) {
     	
-    	System.out.println(">>> concrete invoke " + expr) ;
+    	//System.out.println(">>> concrete invoke " + expr) ;
     	
         MethodSignature methodSig = expr.getMethodSignature();
         boolean isCtor = methodSig.getName().equals("<init>");

@@ -10,6 +10,10 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
+import nl.uu.maze.util.DiGraph.DiGraphNode;
+import nl.uu.maze.util.HCFG.HCFGNodeType;
+import sootup.core.jimple.common.stmt.Stmt;
+
 
 /**
  * Generic representation of a directed graph, with a single entry node.
@@ -84,7 +88,8 @@ public class DiGraph<NodeLabel,EdgeLabel,NodeProperty,EdgeProperty> {
 	
 	/**
 	 * Add a new node with the given label to the graph. Return the added
-	 * node.
+	 * node. The added node will be given the id of the number of nodes
+	 * before the addition (so, this id will be unique).
 	 */
 	public DiGraphNode<NodeLabel,NodeProperty> addNode(NodeLabel label) {
 		int id = nodes.size() ;
@@ -156,6 +161,43 @@ public class DiGraph<NodeLabel,EdgeLabel,NodeProperty,EdgeProperty> {
 			if (isPred) preds.add(nd0) ;
 		}
 		return preds ;
+	}
+	
+	/**
+	 * Renumber the nodes-ids so that the numbering is topological.
+	 */
+	void renumber() {
+		int count = 0 ;
+		List<DiGraphNode<NodeLabel,NodeProperty>> worklist = new LinkedList<>() ;
+		List<DiGraphNode<NodeLabel,NodeProperty>> visited = new LinkedList<>() ;
+		List<DiGraphNode<NodeLabel,NodeProperty>> roots = new LinkedList<>() ;
+		
+		roots.add(start) ;
+		for (var nd : nodes) {
+			if (nd != start && predecessors(nd).isEmpty()) {
+				roots.add(nd) ;
+			}
+		}
+		
+		for (var R : roots) {
+			if (visited.contains(R)) {
+				// should not happen
+				continue ;
+			}
+			// using BFS to renumber:
+			worklist.add(R) ;
+			while (! worklist.isEmpty()) {
+				var nd = worklist.removeFirst() ;
+				nd.id = count ;
+				visited.add(nd) ;
+				count++ ;
+				var outEdges = this.successors.get(nd) ;
+				for (var E : outEdges) {
+					if (! visited.contains(E.dest)) 
+						worklist.add(E.dest) ;
+				}
+			}
+		}
 	}
 	
 	/**
@@ -324,7 +366,8 @@ public class DiGraph<NodeLabel,EdgeLabel,NodeProperty,EdgeProperty> {
 				Tfinal.add(tau) ;
 		}
 		
-		// Tfinal now contain all maximal elementary paths of length <= k		
+		// Tfinal now contain all maximal elementary paths of length <= k	
+
 		return Tfinal ;
 	}
 	
@@ -337,6 +380,7 @@ public class DiGraph<NodeLabel,EdgeLabel,NodeProperty,EdgeProperty> {
 		for (var nd : nodes) {
 			String label = "" + nd.label ;
 			String id = "" + nd.id ;
+			label = "[" + id + "] " + label ; 
 			if (nd == start) {
 				dot.addStartNode(id,label);
 			}
@@ -369,7 +413,7 @@ public class DiGraph<NodeLabel,EdgeLabel,NodeProperty,EdgeProperty> {
 	
 	@Override
 	public String toString() {
-		String z = "HCFG of " + this.name ;
+		String z = "DiGraph of " + this.name ;
 		for (var nd : nodes) {
 			z += "\n  nd " + nd.id + ": " + nd.label ;
 			z += ", props: " + nd.properties ;

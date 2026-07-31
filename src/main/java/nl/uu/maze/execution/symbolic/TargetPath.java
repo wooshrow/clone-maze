@@ -9,10 +9,10 @@ import nl.uu.maze.util.HCFG.HCFGPath;
 public class TargetPath {
 	
 	public static enum TargetPathStatus { 
-		HAS_NO_TARGET, 
-		APPROACHING_TARGET,
 		TARGET_COVERED,
-		TARGET_PARTIALLY_COVERED } 
+		TARGET_PARTIALLY_COVERED,
+		APPROACHING_TARGET,
+		HAS_NO_TARGET } 
 
 	/**
 	 * The status of the {@link #targetpath}:

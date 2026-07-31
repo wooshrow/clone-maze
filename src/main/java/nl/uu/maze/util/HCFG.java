@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 
+import sootup.core.graph.BasicBlock;
 import sootup.core.graph.StmtGraph;
 import sootup.core.jimple.common.stmt.Stmt;
 import sootup.java.core.JavaSootMethod;
@@ -45,22 +46,34 @@ public class HCFG extends DiGraph<Stmt,Stmt,nl.uu.maze.util.HCFG.HCFGNodeType,St
 	
 	
 	/**
-	 * Different types of the CFG nodes. They should be mutually exclusive, except
-	 * for START, which can also be BRANCHING or EXIT.
+	 * Different types of the CFG nodes. A node is either BRANCHING or
+	 * non-branching, represented by type BLOCK.
 	 * 
-	 * <p>EXIT is either return or throw stmt. So, BRANCHING can't be EXIT.
+	 * <p>A node can also be marked as START (the start of a method), or
+	 * EXIT (the exit of a method), or ExcHANDLER_HEAD.
+	 * 
+	 * <p>an EXIT node is a single stmt, which is either a return or a throw.
+	 * So, it can't be BRANCHING.
+	 * 
 	 * <p>An exception HEAD corresponded to the start of a catch-section. It always
 	 * starts with var := @caughtexception, so it can't be BRANCHING nor EXIT.
+	 * 
+	 * <p>A BRANCHING node consists of a single stmt, which is either an if-stmt or
+	 * a switch-stmt.
+	 * 
+	 * <p>A BLOCK can consist of multiple stmts. 
 	 */
 	public static enum HCFGNodeType { 
 		START,  // the starting node of a HCFG
 		EXIT,   // an exit node 
+		BLOCK,  // a non-branching node 
 		BRANCHING, 
 		ExcHANDLER_HEAD // the start of an exception handler (catch-section)
 	} ;
 	
 	/**
-	 * Representing a target path in an HCFG that we aim to cover by a test.
+	 * Representing a target path in an HCFG that we aim to cover by a test. Such 
+	 * a path is a sequence of edges in the HCFG.
 	 */
 	public static class HCFGPath {
 		
@@ -77,13 +90,14 @@ public class HCFG extends DiGraph<Stmt,Stmt,nl.uu.maze.util.HCFG.HCFGNodeType,St
 			int N = path.size() ;
 			List<Integer> z = new LinkedList<>() ;
 			for (var E : path) {
-				if (isExceptionHandlerHead(E.src) || isExitNode(E.src)) {
-					z.add(hashEncodingOfNonBranching(E.src)) ;
-				}
-				else if (isBranchingNode(E.src)) {
+				if (isBranchingNode(E.src)) {
 					z.add(E.edgeId) ;
 				}
+				else {
+					z.add(hashEncodingOfNonBranching(E.src)) ;
+				}
 			}
+			// no need to know the last node, as the last edge simply determines it
 			return z ;
 		}
 		
@@ -100,6 +114,13 @@ public class HCFG extends DiGraph<Stmt,Stmt,nl.uu.maze.util.HCFG.HCFGNodeType,St
 		 */
 		public int coverBy(List<Integer> execHistory) {
 			return cover(execHistory,encoded) ;
+		}
+		
+		
+		List<Integer> getIdsSequence() {
+			List<Integer> seq = new LinkedList<>(path.stream().map(nd -> nd.src.id).toList()) ;
+			seq.add(path.getLast().dest.id) ;
+			return seq ;
 		}
 		
 		@Override
@@ -155,9 +176,9 @@ public class HCFG extends DiGraph<Stmt,Stmt,nl.uu.maze.util.HCFG.HCFGNodeType,St
 	
 	/**
 	 * Mapping each Stmt in the {@link #method} to the HCFG node it belongs
-	 * to. An stmt belows to a node, either if it is the statement that
+	 * to. An stmt belongs to a node, either if it is the statement that
 	 * labels the node, or if there is a normal execution flow from the 
-	 * statement, reaching the node, without passing other nodes in between.
+	 * statement, without passing a branching stmt.
 	 */
 	private Map<Stmt,DiGraphNode<Stmt,HCFGNodeType>> stmt2Node = new HashMap<>() ;
 	
@@ -177,6 +198,16 @@ public class HCFG extends DiGraph<Stmt,Stmt,nl.uu.maze.util.HCFG.HCFGNodeType,St
 		this.method = method ;
 		this.name = method.getName() ;
 		StmtGraph cfg = method.getBody().getStmtGraph() ;
+		
+		//var blocks = cfg.getBlocks() ;
+		//System.out.println("### #blocks=" + blocks.size()) ;
+		//for (var B : blocks) {
+		//	BasicBlock B_ = (BasicBlock) B ;
+		//	System.out.println("   block-start : " + B_.getHead() + ", block-end: " + B_.getTail()) ;
+		//}
+		
+		// first lift the starting-stmt, other entry-stmts, exit stmts, and branching stmts
+		// to nodes:
 		Stmt stmt0 = cfg.getStartingStmt() ;
 		var stmts = method.getBody().getStmts() ;
 		for (Stmt stmt : stmts) {
@@ -195,6 +226,7 @@ public class HCFG extends DiGraph<Stmt,Stmt,nl.uu.maze.util.HCFG.HCFGNodeType,St
 				if (newNode == null) {
 					newNode = this.addNode(stmt) ;
 					newNode.properties.add(HCFGNodeType.START) ;
+					newNode.properties.add(HCFGNodeType.BLOCK) ;
 				}
 				else {
 					newNode.properties.add(HCFGNodeType.START) ;
@@ -214,77 +246,74 @@ public class HCFG extends DiGraph<Stmt,Stmt,nl.uu.maze.util.HCFG.HCFGNodeType,St
 			}
 		}
 		
-		for (var nd1 : nodes) {
-			if (isExitNode(nd1)) 
-				continue ;
-			Stmt stmt1 = nd1.label ;
-			var sucStmts = cfg.successors(stmt1) ;
-			int k = 0 ;
+		// next, we'll lift stmts to which branching statements go to to nodes, if they have
+		// not been lifted yet. This will also link the branching nodes to their successor-nodes.
+		var branchingNodes = nodes.stream().filter(nd -> isBranchingNode(nd)).toList() ;
+		for (var nd1 : branchingNodes) {
+			Stmt stmt1 = nd1.label;
+			var sucStmts = cfg.successors(stmt1);
+			int branchIndex = 0;
 			for (var stmt2 : sucStmts) {
-				Stmt stmt2_ = (Stmt) stmt2 ;
-				int branchHash = BranchStmtUtil.getBranchHash(stmt1, k) ;
-				for (var nd2 : nodes) {
-					if (nd1 != nd2) {
-						if (directReachable(cfg, stmt2_, nd2)) {
-							var edge = this.addEdge(nd1.id, nd2.id,null) ;
-							if (isBranchingNode(nd1)) {
-								edge.label = stmt2_ ;
-								edge.edgeId = branchHash ;
-								
-							}
-							break ;
-						}
-					}
+				Stmt stmt2_ = (Stmt) stmt2;
+				var nd2 = findNodeWithLabel(stmt2_);
+				if (nd2 == null) {
+					nd2 = this.addNode(stmt2_);
+					nd2.properties.add(HCFGNodeType.BLOCK);
 				}
-				k++ ;
-			}	
-		}
-		
-		// fill in the stmt2node mapping:
-		for (Stmt stmt : stmts) {
-			for (var nd : nodes) {
-				if (stmt == nd.label) {
-					stmt2Node.put(stmt, nd) ;
-					break ;
-				}
-				if (directReachable(cfg,stmt,nd)) {
-					stmt2Node.put(stmt, nd) ;
-					break ;
-				}	
+				// add the edge from nd1 to nd2:
+				var edge = this.addEdge(nd1.id, nd2.id, null);
+				edge.label = stmt2_;
+				edge.edgeId = BranchStmtUtil.getBranchHash(stmt1, branchIndex);
+				branchIndex++;
 			}
 		}
+		
+		// next, we fill stmt2Node. This is the same as classifying which statements belong
+		// to which nodes. At the same time we will also add out-edges from non-branching
+		// nodes.
+		for (var nd1 : nodes) {
+			if (isBranchingNode(nd1) || isExitNode(nd1)) {
+				stmt2Node.put(nd1.label, nd1) ;
+				continue ;
+			}
+			Stmt stmt1 = nd1.label ;
+			boolean reachingEndOfNode = false ;
+			while (! reachingEndOfNode) {
+				stmt2Node.put(stmt1,nd1) ;
+				var sucStmts = cfg.successors(stmt1) ;
+				if (sucStmts.size() != 1) {
+					throw new Error("Should not happen!") ;
+				}
+				var stmt2 = (Stmt) sucStmts.getFirst() ;
+				var nd2 = findNodeWithLabel(stmt2) ;
+				if (nd2 != null) {
+					// stmt2 is the start of node nd2, add an edge:
+					var edge = this.addEdge(nd1.id, nd2.id,null) ;
+					reachingEndOfNode = true ;
+				}
+				else {
+					stmt1 = stmt2 ;
+				}
+			}
+		}
+		
+		// renumber the ids so that they are tolopological:
+		renumber() ;
 	}
 	
-	/**
-	 * Return true if node nd can be reached from the statement srcStmt
-	 * through normal execution, and without passing other HCFG nodes than nd.
-	 * Else the function returns false.
-	 */
-	@SuppressWarnings("unchecked")
-	private boolean directReachable(StmtGraph cfg, Stmt srcStmt, DiGraphNode<Stmt,HCFGNodeType> nd) {
-		
-		List<Stmt> stmtsOfNodes = nodes.stream().map(ndx -> ndx.label).toList() ;	
-		Set<Stmt> visited = new HashSet<>() ;
-		Queue<Stmt> worklist = new LinkedList<>() ;
-		worklist.add(srcStmt) ;
-		
-		while (!worklist.isEmpty()) {
-			var stmt = worklist.poll() ;
-			if (visited.contains(stmt)) continue ;
-			if (stmt == nd.label)
-				// reaching nd --> so ... reachable from srcStmt
-				return true ;
-			visited.add(stmt) ;
-			if (stmt != srcStmt && stmtsOfNodes.contains(stmt))
-				// we visit another node, which is not nd --> don't continue
-				continue ;
-			
-			// normal (non-exceptional) successors of stmt:
-			var sucs = cfg.successors(stmt) ;	
-			worklist.addAll(sucs.stream().map(z -> (Stmt) z).toList()) ;
+	
+	
+	
+	private DiGraphNode<Stmt,HCFGNodeType> findNodeWithLabel(Stmt stmt) {
+		for (var nd : nodes) {
+			if (stmt == nd.label) {
+				return nd ;
+			}
 		}
-		return false ;
+		return null ;
 	}
+	
+	
 	
 	/**
 	 * Given an execution history, representing a partial build up to a full
@@ -356,11 +385,69 @@ public class HCFG extends DiGraph<Stmt,Stmt,nl.uu.maze.util.HCFG.HCFGNodeType,St
 	 * another elementary path).
 	 */
 	public List<HCFGPath> getMaxElementaryPaths2(int k) {
-		var paths = this.getMaxElementaryPaths(k) ;
-		return paths.stream()
-				.map(sigma -> new HCFGPath(sigma))
-				.filter(sigma -> ! sigma.encoded.isEmpty())
-				.toList() ;
+		
+		List<HCFGPath> paths = new LinkedList<>(this.getMaxElementaryPaths(k).stream().map(sigma -> new HCFGPath(sigma)).toList()) ;
+		
+		// we filter out paths whose encoding is empty, 
+		// or a sub-sequence of the encoding of another path  --> well ... not needed anymore
+		
+		List<HCFGPath> paths2 = new LinkedList<>() ;
+		
+		while (! paths.isEmpty()) {
+			var sigma = paths.remove(0) ;
+			if (sigma.encoded.isEmpty()) continue ;
+			//boolean maximal = ! paths.stream().anyMatch(tau -> tau != sigma && cover(tau.encoded,sigma.encoded)==0) ;
+			//if (maximal)
+			paths2.add(sigma) ;
+		}
+		
+		// DEBUG
+		/*
+		List<Integer> exclude_ = new LinkedList<>() ;
+		exclude_.add(0) ;
+		exclude_.add(3) ;
+		exclude_.add(4) ;
+		
+		List<Integer> exclude2_ = new LinkedList<>() ;
+		exclude2_.add(0) ;
+		exclude2_.add(1) ;
+		exclude2_.add(2) ;
+		
+		List<Integer> only_ = new LinkedList<>() ;
+		only_.add(7) ;
+		only_.add(6) ;
+		only_.add(3) ;
+		only_.add(8) ;
+		only_.add(1) ;
+		only_.add(5) ;
+		only_.add(2) ;
+		only_.add(7) ;
+		*/
+		
+		/*
+		paths2 = new LinkedList<>(paths2.stream().filter(sigma -> 
+			! (sigma.getIdsSequence().equals(exclude_)
+				|| sigma.getIdsSequence().equals(exclude2_))).toList()
+				)
+				;
+		*/
+		
+		/*
+		paths2 = new LinkedList<>(paths2.stream().filter(sigma 
+				-> sigma.getIdsSequence().equals(only_)).toList()) ;
+		*/
+		
+		// sort the paths based on the id of the first node in the paths;
+		// this will make it so that paths closer to the starting node will
+		// appear first
+		paths2.sort((p1,p2) -> {
+			int c = Integer.compare(p1.path.getFirst().src.id, p2.path.getFirst().src.id) ;
+			if (c!=0) return c ;
+			return Integer.compare(p1.path.size(), p2.path.size()) ;
+			}
+		) ;
+				
+		return paths2 ;
 	}
 	
 	/**
@@ -379,6 +466,29 @@ public class HCFG extends DiGraph<Stmt,Stmt,nl.uu.maze.util.HCFG.HCFGNodeType,St
 		if (nd0 == null)
 			throw new IllegalArgumentException() ;
 		return dist(nd0, nd) ;
+	}
+	
+	public boolean isExceptionHandlerHead(Stmt stmt) {
+		var nd = stmt2Node.get(stmt) ;
+		return isExceptionHandlerHead(nd) && stmt == nd.label ;
+	}
+	
+	public boolean isBranchingNode(Stmt stmt) {
+		var nd = stmt2Node.get(stmt) ;
+		return isBranchingNode(nd) && stmt == nd.label ;
+	}
+	
+	public boolean isEdgeOutStmt(Stmt stmt) {
+		for (var edges : this.successors.values()) {
+			boolean found = edges.stream().anyMatch(E -> E.label == stmt) ;
+			if (found) return true ;
+		}
+		return false ;
+	}
+	
+	public boolean isHeadOfNonBranchingNode(Stmt stmt) {
+		var nd = stmt2Node.get(stmt) ;
+		return ! isBranchingNode(nd) && stmt == nd.label ;
 	}
 	
 	/**

@@ -10,6 +10,7 @@ import java.util.stream.Stream;
 import com.microsoft.z3.*;
 
 import nl.uu.maze.analysis.JavaAnalyzer;
+import nl.uu.maze.execution.EngineConfiguration;
 import nl.uu.maze.execution.MethodType;
 import nl.uu.maze.util.BranchStmtUtil;
 import nl.uu.maze.util.HCFG;
@@ -90,6 +91,7 @@ public class SymbolicState implements SearchTarget {
      * strategies.
      */
     private final List<Integer> newCoverageDepths;
+    
     /**
      * Track the branch history: which branches (encoded by hashing the branching
      * statement and the index of the branch that was taken) were taken along the
@@ -97,12 +99,18 @@ public class SymbolicState implements SearchTarget {
      */
     private final List<Integer> branchHistory;
     
-    private Map<HCFG,List<List<Integer>>> indirectBranchHistories;
+    /**
+     * Track the branch histories of methods invoked by the method associated
+     * with this state.
+     */
+    private List<Pair<HCFG,List<Integer>>> indirectBranchHistories;
     
     
     /**
-     * If not null, this is a target path that the execution towards this symbolic
-     * state strives to cover, or has covered, or partially covers.
+     * If set (not null), this is a target path that the execution leading to this symbolic
+     * state was set to as a goal to cover. The path is expressed in terms of a
+     * sequence of edges over the high-level CFG of the method to which this state belongs
+     * to.
      */
     private TargetPath targetpath = null ;
     
@@ -140,8 +148,7 @@ public class SymbolicState implements SearchTarget {
         this.paramTypes = new HashMap<>();
         this.newCoverageDepths = new ArrayList<>();
         this.branchHistory = new ArrayList<>() ;
-        this.indirectBranchHistories = new HashMap<>() ;
-        this.updateTargetPathStatus();
+        this.indirectBranchHistories = new LinkedList<>() ;
     }
 
     /*
@@ -168,6 +175,7 @@ public class SymbolicState implements SearchTarget {
         this.caller = state.caller;
         this.newCoverageDepths = new ArrayList<>(state.newCoverageDepths);
         this.branchHistory = new ArrayList<>(state.branchHistory) ;
+        this.indirectBranchHistories = new LinkedList<>(state.indirectBranchHistories) ;
 
         this.isCtorState = state.isCtorState;
         this.isFinalState = state.isFinalState;
@@ -200,7 +208,7 @@ public class SymbolicState implements SearchTarget {
     public int getDepth() {
         return depth;
     }
-
+    
     public int incrementDepth() {
         return ++depth;
     }
@@ -227,7 +235,7 @@ public class SymbolicState implements SearchTarget {
     public MethodSignature getMethodSignature() {
         return method.getSignature();
     }
-
+    
     public void setCaller(SymbolicState caller) {
         this.isCtorState = false;
         this.caller = caller;
@@ -253,6 +261,19 @@ public class SymbolicState implements SearchTarget {
 
         return callStack;
     }
+    
+    /**
+     * Add the branch history and indirect branch histories of S, into the indirect
+     * branch-hist of this State.
+     */
+    public void addIndirectBranchHistories(SymbolicState S) {
+    	// adding the branch-histories of this state to the caller state:
+        this.indirectBranchHistories.addAll(S.indirectBranchHistories) ;
+        HCFG hcfg = CoverageTracker.getInstance().getHCFG(S.method) ;
+        if (hcfg != null) {
+        	this.indirectBranchHistories.add(new Pair<>(hcfg, S.branchHistory)) ;
+        }
+    }
 
     /**
      * Return execution to the caller state by transferring return value and changes
@@ -262,30 +283,33 @@ public class SymbolicState implements SearchTarget {
         if (caller == null) {
             return this;
         }
-        SymbolicState caller = this.caller.clone();
+        SymbolicState callerState = this.caller.clone();
 
         // Link relevant parts of the heap from the callee state to the caller state
         // This is necessary to ensure that newly created objects in the callee's state
         // that are referenced by the caller's state are linked correctly
-        caller.setConstraints(pathConstraints, engineConstraints);
-        caller.heap.setCounters(heap.getHeapCounter(), heap.getRefCounter());
-        caller.heap.setResolvedRefs(heap.getResolvedRefs());
+        callerState.setConstraints(pathConstraints, engineConstraints);
+        callerState.heap.setCounters(heap.getHeapCounter(), heap.getRefCounter());
+        callerState.heap.setResolvedRefs(heap.getResolvedRefs());
         // Last statement in the callee state always contains an invoke (possibly as
         // part of a definition statement)
-        AbstractInvokeExpr expr = caller.getStmt().getInvokeExpr();
+        AbstractInvokeExpr expr = callerState.getStmt().getInvokeExpr();
         if (expr instanceof AbstractInstanceInvokeExpr) {
-            caller.heap.linkHeapObject(caller.lookup(((AbstractInstanceInvokeExpr) expr).getBase().getName()), heap);
+            callerState.heap.linkHeapObject(callerState.lookup(((AbstractInstanceInvokeExpr) expr).getBase().getName()), heap);
         }
 
         // Link heap objects for arguments of the method call
         for (Immediate arg : expr.getArgs()) {
-            Expr<?> argExpr = caller.lookup(arg.toString());
+            Expr<?> argExpr = callerState.lookup(arg.toString());
             if (argExpr != null && Z3Sorts.getInstance().isRef(argExpr)) {
-                caller.heap.linkHeapObject(argExpr, heap);
+                callerState.heap.linkHeapObject(argExpr, heap);
             }
         }
-
-        return caller;
+        
+        // adding the branch-histories of this state to the caller state:
+        callerState.addIndirectBranchHistories(this);
+ 
+        return callerState;
     }
 
     /**
@@ -395,152 +419,18 @@ public class SymbolicState implements SearchTarget {
         }
     }
     
+           
     /**
-     * Find a target-path (within the same method as this.method) that
-     * is reachable from this.stmt. No particular selection is made
-     * of which path to take in case there are multiple choices.
+     * Record the stmt into the branch history of this state, if it is the head
+     * stmt of a HCFG node of this.method. Only record it if the node is non-branching.
      */
-    private TargetPath findReachableTargetPath(Stmt stmt, HCFG hcfg) {
-    	var targets = coverageTracker.stillUncoveredTargetPaths.get(hcfg) ;
-    	// check first if there is a sigma that is covered or partially covered:
-    	for (var sigma : targets) {
-    		var k = sigma.coverBy(branchHistory) ;
-    		if (k < 0) continue ;
-    		var T = new TargetPath(sigma) ;
-    		if (k == 0) {
-        		T.status = TargetPathStatus.TARGET_COVERED ;
-        		T.hdist = hcfg.distToExit(stmt) ;
-        	}
-        	else {
-        		T.status = TargetPathStatus.TARGET_PARTIALLY_COVERED ;
-        		T.hdist = k ;
-        	}
-    		return T ;
-    	}
-    	
-    	// else we check if there is a reachable target:
-    	for (var sigma : targets) {		
-    		var dist = hcfg.distToPathHead(stmt,sigma) ;
-    		if (dist >= 0) {
-    			var T = new TargetPath(sigma) ;
-    			T.status = TargetPathStatus.APPROACHING_TARGET ;
-    			T.hdist = dist ;
-    			return T ;
-    		}
-    	}
-    	// else there is no reachable targets
-		var T = new TargetPath() ;
-		T.hdist = hcfg.distToExit(stmt) ;
-		return T ;
-    }
-    
-    public void updateTargetPathStatus() {
+    public void recordIfNonBranchingNodeHead(Stmt stmt) {
     	var hcfg = coverageTracker.getHCFG(method) ;
-    	if (hcfg == null && targetpath == null) {
-    		targetpath = new TargetPath() ;
-    		// if hcfg is null, we can't get estimation on distance to
-    		// exit.. so, just set it to maxint??
-    		// there no easy solution for this ...
-    		targetpath.hdist = Integer.MAX_VALUE ;
-			return ;
-    	}
-		if (targetpath == null) {
-			// hcfg is not null
-			targetpath = findReachableTargetPath(stmt,hcfg) ;
-			return ;
-    	}
-		// both hcfg and targetpath are not null:
-		
-		// first check whether the target is still open:
-		// NOTE: the logic can be optimized. If we know no tests have been
-		// generated, then there is no need to check this. But this is a bit
-		// tricky to check...
-		if (CoverageTracker.getInstance().isDirty()) {
-			boolean targetStillOpen = coverageTracker.stillUncoveredTargetPaths.get(hcfg).contains(targetpath.targetpath) ; ;
-			if (! targetStillOpen){
-				// find a new target
-				targetpath = findReachableTargetPath(stmt,hcfg) ;	
-				return ;
-			}
-		}
-		
-		
-		// target is till open, so we update towards it:
-		//System.out.println(">>> updateTargetPathStatus ") ;
-		//System.out.println("    target: " + targetpath.targetpath + ", " + targetpath.status) ;
-		//System.out.println("    bhist : " + this.branchHistory) ;
-		//System.out.println("    HDIST : " + targetpath.hdist) ;
-		
-    	switch (targetpath.status) {
-    	case TARGET_COVERED : 
-    		targetpath.hdist = hcfg.distToExit(stmt) ;
-    		return ;
-    		
-    	case TARGET_PARTIALLY_COVERED :
-    		var k = targetpath.targetpath.coverBy(branchHistory) ;
-    		if (k < 0) {
-    			// the path deviates from target! 
-    			targetpath = findReachableTargetPath(stmt,hcfg) ;	
-        		return ;
-    		}
-    		if (k == 0) {
-    			targetpath.status = TargetPathStatus.TARGET_COVERED ;
-    			targetpath.hdist = hcfg.distToExit(stmt) ;
-    		}
-    		else {
-    			targetpath.hdist = k ;
-    		}
-    		return ;
-    		
-    	case APPROACHING_TARGET :
-    		if (targetpath.hdist == 0) {
-    			// execution is approaching or at the target head, but we
-    			// don't know exactly how far. Use branc-hhistory to check
-    			// if it is at the head or first edge of the target.
-    			// IMPORTANT: check via branch first before re-checking via
-    			// distToPathHead
-    			k = targetpath.targetpath.coverBy(branchHistory) ;
-    			if (k>=0) {
-    				targetpath.status = TargetPathStatus.TARGET_PARTIALLY_COVERED ;
-    				targetpath.hdist = k ;
-    				return ;
-    			}
-    		}
-    		var dist = hcfg.distToPathHead(stmt, targetpath.targetpath) ;
-    		targetpath.hdist = dist ;
-    		if (dist >= 0) {
-    			return ;
-    		}
-    		// dist negative, so target is no longer reachable:
-    		targetpath = findReachableTargetPath(stmt,hcfg) ;
-    		return ;
-    	}
-    }
-    
-    /**
-     * Record the stmt into the branch history of this state, if it is an exit-statement
-     * of some method under test.
-     */
-    public void recordIfExitStmt(Stmt stmt) {
-    	if (stmt instanceof JReturnStmt 
-    			|| stmt instanceof JReturnVoidStmt 
-    			|| stmt instanceof JThrowStmt) {
-    		if (coverageTracker.isExitNode(stmt)) {
-    			branchHistory.add(BranchStmtUtil.getBranchHash(stmt,-1)) ;
-    		}
-    	}
-    }
-    
-    /**
-     * Record the stmt into the branch history of this state, if it is the head of an
-     * exception handler in a method under test.
-     */
-    public void recordIfExceptiomHead(Stmt stmt) {
-    	if (stmt instanceof JAssignStmt && coverageTracker.isExceptionHandlerHead(stmt)) {
+    	if (hcfg != null && hcfg.isHeadOfNonBranchingNode(stmt)) {
     		branchHistory.add(BranchStmtUtil.getBranchHash(stmt,-1)) ;
     	}
     }
-
+    
     /**
      * Record a branch taken.
      * This is used for branch history tracking.
@@ -557,22 +447,38 @@ public class SymbolicState implements SearchTarget {
 
     /**
      * Get the history of passed branches, leading to this state. Each branch is
-     * represented by its hash value.
+     * represented by its hash value. This only contain the history of the passed 
+     * branches of the method m associated with this state. In particular, branches
+     * over other methods called by m is not included in this history. 
+     * 
      */
     public List<Integer> getBranchHistory() {
         return this.branchHistory ;
+    }
+    
+    /**
+     * Get the branch histories of methods invoked by the method associated
+     * with this state.
+     */
+    public  List<Pair<HCFG,List<Integer>>> getIndirectBranchHistories() {
+    	return this.indirectBranchHistories ;
     }
     
     public TargetPath getTargetPath() {
     	return this.targetpath ;
     }
     
-    public void setIteration(int iteration) {
-        this.iteration = iteration;
+    public TargetPath setTargetPath(TargetPath sigma) {
+    	return this.targetpath = sigma ;
     }
+    
 
     public int getIteration() {
         return iteration;
+    }
+
+    public void setIteration(int iteration) {
+        this.iteration = iteration;
     }
 
     public void setWaitingTime(int waitingTime) {

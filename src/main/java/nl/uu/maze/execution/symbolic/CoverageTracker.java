@@ -1,6 +1,8 @@
 package nl.uu.maze.execution.symbolic;
 
 import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +33,8 @@ public class CoverageTracker {
 	private static final Logger logger = LoggerFactory.getLogger(CoverageTracker.class);
 	
     private static CoverageTracker instance;
+    
+    private EngineConfiguration engineConfig = EngineConfiguration.getInstance() ;
 
     public static CoverageTracker getInstance() {
         if (instance == null) {
@@ -40,12 +44,12 @@ public class CoverageTracker {
     }
     
     /**
-     * The statements of the class under test. 
+     * The statements of CUT's targeted methods.
      */
     private Set<Stmt> targetStmts ;
     
     /**
-     * The branches of the class under test. 
+     * The branches of CUT's targeted methods.
      */
     private Set<Integer> targetBranches ;
     
@@ -75,10 +79,29 @@ public class CoverageTracker {
      */
     private Set<Stmt> coveredStmts_byExpl;
     
+    /**
+     * Tracked target methods and their high-level CFGs. 
+     */
+    Map<JavaSootMethod,HCFG> hcfgs = new IdentityHashMap<>() ; // use Identity Hash-map to use == instead of equals
     
-    Map<HCFG, List<HCFGPath>> targetPaths = new HashMap<>() ;
-    Map<HCFG, List<HCFGPath>> stillUncoveredTargetPaths = new HashMap<>() ;
-     
+    /**
+     * Tracked target paths to cover.
+     */
+    Map<JavaSootMethod, List<HCFGPath>> targetPaths = new IdentityHashMap<>() ;
+    
+    /**
+     * The target paths that are not covered yet, and are still considered as feasible
+     * by the engine.
+     */
+    Map<JavaSootMethod, List<HCFGPath>> stillUncoveredTargetPaths = new IdentityHashMap<>() ;
+    
+    /**
+     * Target paths that have been dropped by the engine, e.g. because it thinks they
+     * are unfeasible.
+     */
+    Map<JavaSootMethod, List<HCFGPath>> droppedTargetPaths = new IdentityHashMap<>() ;
+    
+    
     /**
      * The statements (across the whole CUT) which are the head of an exception handler.
      * We store them so we can know when to record their visit into the branch history.
@@ -92,7 +115,7 @@ public class CoverageTracker {
     private Set<Stmt> exitStmts = new HashSet<>() ;
     
     /**
-     * True, if the coverage information is just updated by a test via {@link #registerCoveregeByTesting(SymbolicState, InstructionHistory)}.
+     * True, if the coverage information is just updated by a test, e.g. via {@link #registerCoveregeByTesting(SymbolicState, InstructionHistory)}.
      */
     private boolean dirty = false ;
 
@@ -110,7 +133,12 @@ public class CoverageTracker {
     /**
      * Register coverage targets, given a target method.
      */
-    public void addTargets(JavaSootMethod method) {
+    public void addTarget(JavaSootMethod method) {
+    	
+    	logger.info("Adding " + method.getName() + " as a target, #stmts:" + method.getBody().getStmts().size()) ;
+        System.out.println(">>> addTarget " + method.getName() + "\n" + method.getBody()) ;
+        
+    	
     	var cfg = method.getBody().getStmtGraph() ;
     	var stmts = method.getBody().getStmts() ;
     	targetStmts.addAll(stmts) ;
@@ -130,6 +158,7 @@ public class CoverageTracker {
     	}
     	
     	HCFG hcfg = new HCFG(method) ;
+    	hcfgs.put(method, hcfg) ;
     	System.out.println(">>> HCFG " + hcfg) ;
     	try {
     		hcfg.saveAsDot(null);
@@ -139,10 +168,14 @@ public class CoverageTracker {
     	int k = EngineConfiguration.getInstance().pathLengthCoverage ;
     	if (k==-1 || k>=1) {
     		var targets = hcfg.getMaxElementaryPaths2(k) ;
-    		targetPaths.put(hcfg, targets) ;
+    		targetPaths.put(method, targets) ;
         	List<HCFGPath> targets__ = new LinkedList<>() ;
         	targets__.addAll(targets) ;
-        	stillUncoveredTargetPaths.put(hcfg, targets__) ;
+        	stillUncoveredTargetPaths.put(method, targets__) ;
+        	
+        	List<HCFGPath> dropped = new LinkedList<>() ;
+        	droppedTargetPaths.put(method, dropped) ;
+        	
         	
         	for (var nd : hcfg.nodes) {
         		if (HCFG.isExitNode(nd)) {
@@ -155,14 +188,11 @@ public class CoverageTracker {
     	}
     	
     	
-    	System.out.println(">>>> #targets = " + this.numberOfTargetPaths()) ;
-        for (var T : targetPaths.entrySet()) {
-        	int i = 0 ;
-        	System.out.println("   * " + T.getKey().method.getName()) ;
-        	for (var sigma : T.getValue()) {
-            	System.out.println("    " + i + ": " + sigma) ;
-        		i++ ;
-        	}
+    	System.out.println(">>> #target-paths of " + method.getName() + ": " + this.targetPaths.get(method).size()) ;
+    	int i = 1 ;
+    	for (var sigma : this.targetPaths.get(method)) {
+        	System.out.println("    " + i + ": " + sigma) ;
+        	i++ ;
         }
     	/*
     	System.out.println(method.getSignature());
@@ -243,23 +273,41 @@ public class CoverageTracker {
     		prevStmt = stmt ;
     	}
     	
-    	// register target paths covered by state.branchhistory; only relevant for
-    	// k=-1 or k>=1:
+    	// register target paths covered by state.branchhistory and indirect-hist; 
+    	// only relevant for k=-1 or k>=1:
     	int k = EngineConfiguration.getInstance().pathLengthCoverage ;
     	if (k == -1 || k >= 1) {
-    		var sigma = state.getBranchHistory() ;
-    		HCFG hcfg = getHCFG(state.getMethod()) ;
-    		if (hcfg != null) {
-    			var targets = this.stillUncoveredTargetPaths.get(hcfg) ;
-    			List<HCFGPath> covered = new LinkedList<>() ;
-            	for (var tau : targets) {
-        		   	if (tau.coverBy(sigma) == 0) {
-        		   		covered.add(tau) ;
-        		   	}
-        		}
-            	if (covered.size() > 0) hasNewCoverage = true ;
+
+    		BiFunction<JavaSootMethod, List<Integer>,Integer> check = (method,sigma) -> {
+    			if (hcfgs.get(method) == null) return 0 ;
+    			var targets = this.stillUncoveredTargetPaths.get(method) ;
+    			var dropped = this.droppedTargetPaths.get(method) ;
+    			int count = 0 ;
+    			List<HCFGPath> covered = targets.stream().filter(tau -> tau.coverBy(sigma) == 0).toList() ;
             	targets.removeAll(covered) ;
+                count += covered.size() ;
+    			// also check dropped-targets:
+                covered = dropped.stream().filter(tau -> tau.coverBy(sigma) == 0).toList() ;
+            	dropped.removeAll(covered) ;
+                count += covered.size() ;
+    			
+            	return count ;
+    		} ;
+    		
+    		var newcov = check.apply(state.getMethod(),state.getBranchHistory()) ;
+            if (newcov > 0) hasNewCoverage = true ;
+    		
+    		// check indirect path-cov:
+    		for (var indirectHist : state.getIndirectBranchHistories()) {
+    			HCFG hcfg  = indirectHist.first() ;
+    			var sigma = indirectHist.second() ;
+    			newcov = check.apply(hcfg.method,sigma) ;
+            	if (newcov > 0) hasNewCoverage = true ;
     		}
+    		
+    		System.out.println(">>> CoverageTracker, registering a candidate test" 
+    				+ (hasNewCoverage ? " +new-COV " : "")
+    				+ ", remaining #uncoverared-paths: " + numberOfStillUncoveredTargetPaths()) ;
     	}
     	
     	if (hasNewCoverage) dirty = true ;
@@ -305,6 +353,42 @@ public class CoverageTracker {
     	return n ;
     }
     
+    public List<HCFGPath> getStillUncoveredTargetPaths(JavaSootMethod method) {
+    	return stillUncoveredTargetPaths.get(method) ;
+    }
+    
+    public List<HCFGPath> getDroppedTargetPaths(JavaSootMethod method) {
+    	return droppedTargetPaths.get(method) ;
+    }
+    
+    
+    public List<HCFGPath> whichTargetPathsAreCovered(List<HCFGPath> Z) {
+    	List<HCFGPath> covered = new LinkedList<>() ;
+    	for (var sigma : Z) {
+    		boolean stillOpen = false ;
+    		for (var U : stillUncoveredTargetPaths.values()) {
+        		if (U.contains(sigma)) {
+        			stillOpen = true ;
+        			break ;
+        		}
+        	}
+    		if (stillOpen) continue ;
+    		for (var U : droppedTargetPaths.values()) {
+        		if (U.contains(sigma)) {
+        			stillOpen = true ;
+        			break ;
+        		}
+        	}
+    		if (! stillOpen) covered.add(sigma) ;
+    	}
+    	return covered ;
+    }
+    
+    
+    /**
+     * Give the number of target paths that are still uncovered and are still considered as
+     * feasible.
+     */
     public int numberOfStillUncoveredTargetPaths() {
     	int m = 0 ;
     	for (var T : stillUncoveredTargetPaths.values()) {
@@ -313,13 +397,20 @@ public class CoverageTracker {
     	return m ;
     }
     
-    public HCFG getHCFG(JavaSootMethod method) {
-    	for (var hcfg : this.targetPaths.keySet()) {
-    		if (hcfg.method == method) {
-    			return hcfg ;
-    		}
+    /**
+     * The number of target paths that were dropped e.g. because they were considered as 
+     * unfeasible.
+     */
+    public int numberOfDroppedTargetPaths() {
+    	int m = 0 ;
+    	for (var T : droppedTargetPaths.values()) {
+    		m += T.size() ;
     	}
-    	return null ;
+    	return m ;
+    }
+    
+    public HCFG getHCFG(JavaSootMethod method) {
+    	return hcfgs.get(method) ;    	
     }
     
     
@@ -339,10 +430,48 @@ public class CoverageTracker {
     }
     
     
+    public List<HCFGPath> getAllTargetPaths() {
+    	List<HCFGPath> targets = new LinkedList<>() ;
+    	for (var T : targetPaths.values()) {
+    		targets.addAll(T) ;
+    	}
+    	return targets ;
+    }
+    
+    /**
+     * Mark sigma as "unfeasible". This will remove sigma from the list of 
+     * still-uncovered targets, and add it to the list of dropped targets.
+     * Note that the engine does not typically check whether sigma is really
+     * unfeasible, but it may consider it unfeasible based on some heuristics.
+     */
+    public void markTargetPathUnfeasible(HCFGPath sigma) {
+    	for (var T : stillUncoveredTargetPaths.entrySet()) {
+    		var targets = T.getValue() ;
+    		var removed = targets.remove(sigma) ;
+    		if (removed) {
+    			// sigma found... remove it, and add it to the drop-list:
+    			var method = T.getKey() ;
+    			var dropped = droppedTargetPaths.get(method) ;
+    			dropped.add(sigma) ;
+    			dirty = true ;
+    			return ;
+    		}
+    	}
+    }
+    
+    /**
+     * If engine EngineConfiguration is set to have pathLengthCoverage is set to 0 (default),
+     * this is true when all target branches and stmts are covered.
+     * Else, when the config if non-zero, this is true if if the number of still uncovered
+     * target paths is 0. This does not count paths that were dropped (e.g. because considered
+     * unfeasible).
+     */
     public boolean allCoverageTargetsCompleted() {
+    	if (engineConfig.pathLengthCoverage != 0) {
+    		return this.numberOfStillUncoveredTargetPaths() == 0 ;
+    	}
     	return this.numberOfStillUnCoveredBranches() == 0
-    			&& this.numberOfStillUnCoveredStmts() == 0
-    			&& this.numberOfStillUncoveredTargetPaths() == 0 ;
+    			&& this.numberOfStillUnCoveredStmts() == 0 ;
     }
 
     /**
@@ -366,19 +495,37 @@ public class CoverageTracker {
     	System.out.println(">>>> debugPrintCoveredPaths") ;
     	for (var P : this.targetPaths.entrySet()) {
     		var missed = this.stillUncoveredTargetPaths.get(P.getKey()) ;
-            System.out.println(">>>> method = " + P.getKey().name + ", COVERED:") ;
+            var dropped = this.droppedTargetPaths.get(P.getKey()) ;
+            System.out.println(">>>> method = " + P.getKey().getName() + ", COVERED:") ;
             int i = 1 ;
             for (var sigma : P.getValue()) {
-            	if (missed.contains(sigma)) continue ;
+            	if (missed.contains(sigma) || dropped.contains(sigma)) continue ;
                 System.out.println("       " + i + ": " + sigma) ;
             	i++ ;
             }
-            System.out.println(">>>> method = " + P.getKey().name + ", MISSED:") ;
-            i = 1 ;
-            for (var sigma : missed) {
-                System.out.println("       " + i + ": " + sigma) ;
-            	i++ ;
+            if (missed.size() == 0) {
+            	System.out.println(">>>> method = " + P.getKey().getName() + ", MISSED: none") ;
             }
+            else {
+            	 System.out.println(">>>> method = " + P.getKey().getName() + ", MISSED:") ;
+                 i = 1 ;
+                 for (var sigma : missed) {
+                     System.out.println("       " + i + ": " + sigma) ;
+                 	i++ ;
+                 }
+            }
+            if (dropped.size() == 0) {
+            	System.out.println(">>>> method = " + P.getKey().getName() + ", DROPPED: none") ;
+            }
+            else {
+            	System.out.println(">>>> method = " + P.getKey().getName() + ", DROPPED:") ;
+                i = 1 ;
+                for (var sigma : dropped) {
+                    System.out.println("       " + i + ": " + sigma) ;
+                	i++ ;
+                }
+            }
+            
     	}
     }
 }
