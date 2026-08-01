@@ -87,7 +87,9 @@ public class CobaMaze {
 				      + sp + "--exportJimple=-1"
 				      + sp + "--exportHCFG=-1"
 				      + sp + "--exportTargetPaths=-1" 
-				      + sp + "--exportPathCovInfo=-1" 				      
+				      + sp + "--exportPathCovInfo=-1" 		
+				      + sp + "--exportSummary=true" 	
+				      
 				      + sp
 				      ;
 

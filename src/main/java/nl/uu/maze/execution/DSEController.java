@@ -17,6 +17,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -153,6 +155,7 @@ public class DSEController {
      *           {@link #run()} method actually runs the execution.
      */
     public void run(String className, long timeBudget) throws Exception {
+    	Long mystartTime = System.currentTimeMillis();
         this.timeBudget = timeBudget;
         // Instrument the class if concrete-driven
         // If this class was instrumented before, it will reuse previous results
@@ -243,6 +246,11 @@ public class DSEController {
         	generator.writeToFile(outPath); 
             logger.info("#generated test-cases: {}", generator.getNumberOfGeneratedTestCases()) ;
             
+            // ok... well, runtime sampled at this point, NOT the same as the one sampled
+            // from CLI
+            Long runtime_ = System.currentTimeMillis() - mystartTime ;
+            
+            
         	logger.info("#items explored: " + searchStrategy.getTotalExploredCount()) ;
         	int stmtTargets = CoverageTracker.getInstance().numberOfTargetStmts() ;
         	int stmtCovered = stmtTargets - CoverageTracker.getInstance().numberOfStillUnCoveredStmts() ;
@@ -280,8 +288,69 @@ public class DSEController {
                         break ;
             }
             
+            if (EngineConfiguration.getInstance().exportSummary) {
+            	String[] summaryHeader = {
+               		 "CUT",
+               		 "#items-explored",
+               		 "#instruction",
+               		 "#instr-cov",
+               		 "instr-cov-ratio",
+               		 "#branch",
+               		 "#branch-cov",
+               		 "branch-cov-ratio",
+               		 "#path-targets",
+               		 "#path-cov",
+               		 "path-cov-ratio",
+               		 "#path-dropped",
+               		 "#test",
+               		 "#errors",
+               		 "runtime" 
+               } ;
+               
+               float stmtCovRatio = 0f;
+               if (stmtTargets > 0) {
+               	stmtCovRatio = (float) stmtCovered / (float) stmtTargets ;
+               }
+               float branchCovRatio = 0f ;
+               if (branchTargets > 0) {
+               	branchCovRatio = (float) branchCovered / (float) branchTargets ;
+               }
+               float pathCovRatio = 0f ;
+               if (pathTargets > 0) {
+               	pathCovRatio = (float) pathCovered / (float) pathTargets ;
+               }
+               String[] summaryContent = {
+               		clazz.getName(),
+               		 "" + searchStrategy.getTotalExploredCount(),
+               		 "" + stmtTargets,
+               		 "" + stmtCovered,
+               		 "" + stmtCovRatio,
+               		 "" + branchTargets,
+               		 "" + branchCovered,
+               		 "" + branchCovRatio,
+               		 "" + pathTargets,
+               		 "" + pathCovered,
+               		 "" + pathCovRatio,
+               		 "" + CoverageTracker.getInstance().numberOfDroppedTargetPaths(),
+               		 "" + generator.getNumberOfGeneratedTestCases(),
+               		 "" + generator.getNumberOfViolationFound(),
+               		 "" + runtime_
+               } ;
+               
+               String summary = Stream.of(summaryHeader).collect(Collectors.joining(",")).toString() ;
+               summary += "\n" + Stream.of(summaryContent).collect(Collectors.joining(",")).toString() ;
+               String file =Paths.get(EngineConfiguration.getInstance().outPath, clazz.getName() + "-test-summary.csv").toString() ;
+               try {
+            	   IOUtils.saveTxtToFile(file, summary) ;
+               }
+               catch (Exception e) {
+            	   logger.error("Failed to save test summary of " + clazz.getName()) ;
+               }
+            }
         }
     }
+    
+    
 
     /**
      * Run the dynamic symbolic execution engine on the current class.

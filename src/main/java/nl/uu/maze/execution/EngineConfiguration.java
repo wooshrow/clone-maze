@@ -149,6 +149,12 @@ public class EngineConfiguration {
       */
      public int exportPathCovInfo = 0 ;
      
+     /**
+      * If true will export testing statistics (coverage, if error was found etc) to a csv file.
+      * <p>Default: false.
+      */
+     public boolean exportSummary = false ;
+     
      
      public String outPath = null ;
      

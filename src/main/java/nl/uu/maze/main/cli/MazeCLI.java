@@ -122,6 +122,10 @@ public class MazeCLI implements Callable<Integer> {
     @Option(names = { "--exportPathCovInfo" }, description = "If 1, will export path coverage info to a file. If -1 will print it to log info. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<1|-1|0>")
     private int exportPathCovInfo ;
     
+    @Option(names = { "--exportSummary" }, description = "If true, will export basic test statistics to a csv file. (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
+    private boolean exportSummary ;
+    
+    
     
     @Override
     public Integer call() {
@@ -144,6 +148,7 @@ public class MazeCLI implements Callable<Integer> {
             EngineConfiguration.getInstance().exportHCFG = this.exportHCFG ;
             EngineConfiguration.getInstance().exportTargetPaths = this.exportTargetPaths ;
             EngineConfiguration.getInstance().exportPathCovInfo = this.exportPathCovInfo ;
+            EngineConfiguration.getInstance().exportSummary = this.exportSummary ;
 
             EngineConfiguration.getInstance().outPath = this.outPath ;            
             
