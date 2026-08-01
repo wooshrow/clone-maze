@@ -89,35 +89,69 @@ public class EngineConfiguration {
      
      
      /**
-      * if the value is at least 2, the engine will track the coverage over elementary 
-      * paths of length 2 as coverage targets. The length of a path is  here defined
+      * if the value k >= 1, the engine will track the coverage over elementary 
+      * paths of length k as coverage targets. The length of a path is  here defined
       * as the number of edges in the path. Only intra-method paths are considered
       * as targets. That is, paths that do not cross between method-boundary.
       * The considered paths are paths at the high-level CFG of the method under
-      * tests in the CUT. So, these are paths at the node-level, and not paths
-      * at the instruction/stmt-level.
+      * tests in the CUT. So, these are paths at the node-level of the HCFG, and 
+      * not paths at the instruction/stmt-level.
       * 
-      * <p>A target path of length two describes an edge-pair. A target path of length
-      * 1 corresponds to a branch in a conditional. Branches are already targeted by
-      * the MAZE engine.
+      * <p>If k=0, no tracking is done.
+      * <p>With k=2 the engine will track the coverage over edge-pairs. With
+      * k=1 it will track coverage over HCFG edges, which more or less correspond
+      * to the conditional branches in the program. Note that by default MAZE
+      * separately always track coverage over instruction level branches.
+      * 
+      * <p>When k=-1, prime paths will be targeted.
       * 
       * <p>When the option {@link #minimalisticTestSuite} is enabled, and
-      * the value of enablePathCoverage is k >= 1, whenever a test is found
+      * the value of enablePathCoverage is k non-zero, whenever a test is found
       * that covers target path of length k, which has not been covered before,
       * the test will be actually be generated as aJUnit test-method. As there are
       * usually more paths of length k than the number of branches, this option 
       * may thus cause more tests to be generated (though on the other hand, it is
-      * the also more thorough).
+      * the also more thorough). (if k=0, then only tests that cover new instruction
+      * or instruction-level branch will be generated).
       * 
-      * <p>When k=-1, prime paths will be targeted.
-      * 
-      * <p>If {@link #minimalisticTestSuite} is not set, then this setting matters less, 
-      * as the engine will convert any completed path to a test, regardless 
-      * whether it gives new coverage or not.
+      * <p>If {@link #minimalisticTestSuite} is not set, the engine will convert any 
+      * completed path to a test, regardless whether it gives new coverage or not.
       * 
       * <p>Default: 0.
       */
      public int pathLengthCoverage = 0 ;
+     
+     /**
+      * If 1, the Jimple-code of every target class will be exported to a file. 
+      * If -1 it will be printed to log.info. If 0 it will not be saved nor printed.
+      * <p>Default: 0.
+      */
+     public int exportJimple = 0 ;
+     
+     /**
+      * If 1, the high-level CFG of every target method will be exported to a dot-file.
+      * If -1 it will be printed to log.info. If 0 it will not be saved nor printed.
+      * <p>Default: 0.
+      */
+     public int exportHCFG = 0 ;
+     
+     /**
+      * If 1, registered target paths will be exported to a file. 
+      * If -1 it will be printed to log.info. If 0 it will not be saved nor printed.
+      * <p>Default: 0.
+      */
+     public int exportTargetPaths = 0 ;
+     
+     /**
+      * If 1, path coverage information will be exported to a file. 
+      * If -1 it will be printed to log.info. If 0 it will not be saved nor printed.
+      * <p>Default: 0.
+      */
+     public int exportPathCovInfo = 0 ;
+     
+     
+     public String outPath = null ;
+     
     
     /**
      * Get a fresh random generator, using {@link #globalRandomSeed} as the seed, if it is

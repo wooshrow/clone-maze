@@ -12,7 +12,10 @@ import nl.uu.maze.execution.EngineConfiguration;
 import nl.uu.maze.util.BranchStmtUtil;
 import nl.uu.maze.util.HCFG;
 import nl.uu.maze.util.HCFG.HCFGPath;
+import nl.uu.maze.util.IOUtils;
 
+import java.io.IOException;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -135,10 +138,6 @@ public class CoverageTracker {
      */
     public void addTarget(JavaSootMethod method) {
     	
-    	logger.info("Adding " + method.getName() + " as a target, #stmts:" + method.getBody().getStmts().size()) ;
-        System.out.println(">>> addTarget " + method.getName() + "\n" + method.getBody()) ;
-        
-    	
     	var cfg = method.getBody().getStmtGraph() ;
     	var stmts = method.getBody().getStmts() ;
     	targetStmts.addAll(stmts) ;
@@ -147,6 +146,7 @@ public class CoverageTracker {
     	// adding branch-targets; we will only incluce branches from branching
     	// instructions as targets. In particular, exceptional jumps are not
     	// targeted in this implementation
+    	int oldNumberOfTargetBranches = targetBranches.size() ;
     	for (Stmt S : stmts) {
     		var succs = cfg.getAllSuccessors(S) ;
     		for (var nextS : succs) {
@@ -156,14 +156,10 @@ public class CoverageTracker {
     			}
     		}
     	}
+    	int addedBranches = targetBranches.size() -  oldNumberOfTargetBranches ;
     	
     	HCFG hcfg = new HCFG(method) ;
     	hcfgs.put(method, hcfg) ;
-    	System.out.println(">>> HCFG " + hcfg) ;
-    	try {
-    		hcfg.saveAsDot(null);
-    	}
-    	catch(Exception e) { }
     	
     	int k = EngineConfiguration.getInstance().pathLengthCoverage ;
     	if (k==-1 || k>=1) {
@@ -187,25 +183,73 @@ public class CoverageTracker {
         	}
     	}
     	
+    	int numOfTargetPaths = this.targetPaths.get(method).size() ;
+    	logger.info("Added " + method.getName() + " as a target, #stmts:" + method.getBody().getStmts().size()
+    			+ ", #branches:" + addedBranches
+    			+ (numOfTargetPaths > 0 ? ", #target-k-paths:" + numOfTargetPaths : "")) ;
+    	// saving or printing information if configured to:
+    	String outpath = engineConfig.outPath == null ? "" : engineConfig.outPath ;
+    	if (outpath == null) outpath = "" ;
+    	String classname = method.getDeclaringClassType().getClassName() ;
+    	String methodname = method.getName() ;
     	
-    	System.out.println(">>> #target-paths of " + method.getName() + ": " + this.targetPaths.get(method).size()) ;
+        switch (engineConfig.exportJimple) {
+            case -1 :logger.info("Jimple code of " +  method.getName() + "\n" + method.getBody());  break ;
+            case 1 : try {
+            			String file = Paths.get(outpath, classname + "_" + methodname + ".jimple").toString() ;
+            			IOUtils.saveTxtToFile(file, methodname + "\n" + method.getBody());
+            		 }
+            		 catch(Exception e) {
+            			logger.error("Failing to save jimple of " + methodname);
+            		 } 
+            		 break ;
+        }
+        
+        switch (engineConfig.exportHCFG) {
+        	case -1 : logger.info("Dot file\n" + hcfg.asDot()) ; break ;
+        	case 1 : try {
+        				String file = Paths.get(outpath, classname + "_" + methodname + ".dot").toString() ;
+        				hcfg.saveAsDot(file) ;
+        			 }
+        			 catch(Exception e) {
+        				 logger.error("Failing to save HCFG of " + methodname);
+        			 }
+        			 break ;
+        }
+        
+        if (engineConfig.exportTargetPaths != 0) {
+        	String z = "" ;
+        	if (numOfTargetPaths == 0) 
+        		z = "has no target path" ;
+        	else 
+        		z = targetPathsToString(this.targetPaths.get(method)) ;
+        	
+        	switch (engineConfig.exportTargetPaths) {
+        	case -1 : logger.info("Target paths:\n" + z) ; break ;
+        	case 1 : try {
+        				String file = Paths.get(outpath, classname + "_" + methodname + "-targetpaths.txt").toString() ;
+        				IOUtils.saveTxtToFile(file,z) ;
+         			 }
+        			 catch(Exception e) {
+        				 logger.error("Failing to save target paths of " + methodname);
+        			 }
+        			 break ;
+            }
+        }
+    }
+    
+    private static String targetPathsToString(List<HCFGPath> paths) {
+    	StringBuffer buf = new StringBuffer() ;
     	int i = 1 ;
-    	for (var sigma : this.targetPaths.get(method)) {
-        	System.out.println("    " + i + ": " + sigma) ;
+    	for (var sigma : paths) {
+    		if (i>1) buf.append("\n") ;
+     		buf.append("   " + i + ":  " + sigma.toStringCompact()) ;
         	i++ ;
         }
-    	/*
-    	System.out.println(method.getSignature());
-	    System.out.println(method.getBody());
-    	System.out.println(">>> " + method.getName() +  ", #stmts:" + method.getBody().getStmts().size()) ;
-        for (var stmt : method.getBody().getStmts()) {
-        	System.out.println("       " + stmt.toString()) ;
-        }
-        */
-    	//System.out.println(">>> " + method.getName() + " branches " + targetStmts.size() + " : " + stillOpenBranchTargets) ;
-    	
+    	return buf.toString() ;
     }
-
+    
+ 
     /**
      * Marks a statement as covered by exploration during the search to come up with tests.
      * 
@@ -487,9 +531,47 @@ public class CoverageTracker {
         coveredStmts_byExpl.clear();
         coveredBranches.clear(); 
         stillUncoveredTargetPaths.clear(); 
+        droppedTargetPaths.clear();
         exitStmts.clear(); 
         exceptionHandlerHeads.clear(); 
     }
+    
+    public String showPathCoverageInfo() {
+       	if (this.numberOfTargetPaths() == 0) 
+    		return "no target paths were set" ;
+ 
+       	StringBuffer buf = new StringBuffer() ;
+    		
+    	int k = 0 ;
+    	for (var method : this.targetPaths.keySet()) {
+    		if (k>0) buf.append("\n") ;
+    		var targetted = this.targetPaths.get(method) ;
+    		var uncovered = this.stillUncoveredTargetPaths.get(method) ;
+    		var dropped = this.droppedTargetPaths.get(method) ;
+    		List<HCFGPath> covered = targetted.stream()
+    					.filter(sigma -> ! uncovered.contains(sigma) && ! dropped.contains(sigma))
+    					.toList() ;
+    		
+    		buf.append("** method " + method.getName() + " " + covered.size() + "/" + targetted.size() + ". COVERED:\n") ;
+    		buf.append(targetPathsToString(covered)) ;
+    		buf.append("\n   MISSED: ") ;
+    		if (uncovered.isEmpty())
+    			buf.append("-") ;
+    		else
+    			buf.append("\n" + targetPathsToString(uncovered)) ;
+    		buf.append("\n   DROPPED: ") ;
+    		if (dropped.isEmpty())
+    			buf.append("-") ;
+    		else
+    			buf.append("\n" + targetPathsToString(dropped)) ;
+    	}
+    	return buf.toString() ;
+    }
+    
+    public void savePathCoverageInfo(String file) throws IOException {
+    	IOUtils.saveTxtToFile(file, showPathCoverageInfo());
+    }
+    
     
     public void debugPrintCoveredPaths() {
     	System.out.println(">>>> debugPrintCoveredPaths") ;

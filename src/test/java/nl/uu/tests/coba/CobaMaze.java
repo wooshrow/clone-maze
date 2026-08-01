@@ -34,7 +34,7 @@ public class CobaMaze {
 		//String CUT = "cobabench.CobaSettingCUTfields" ;
 		//String CUT = "cobabench.CobaExceptionHandlers" ;
 		//String CUT = "cobabench.CobaGraphTraversal" ;
-		//String CUT = "cobabench.CobaSimplePaths" ;
+		String CUT = "cobabench.CobaSimplePaths" ;
 		
 		// classes from Maze-bm:
 		//String CUT = "cobabench.mazebm.TriangleClassifier" ;
@@ -43,17 +43,17 @@ public class CobaMaze {
 		//String CUT = "cobabench.mazebm.BinaryTree" ; // challenge
 		//String CUT = "cobabench.mazebm.BitwiseManipulator" ;
 		//String CUT = "cobabench.mazebm.IntUtils" ;
-		//String CUT = "cobabench.mazebm.StringUtils" ;
-		//String CUT = "cobabench.mazebm.BracketBalancer" ;
+		//String CUT = "cobabench.mazebm.StringUtils" ;// lots of prime paths 3000+ !
+		//String CUT = "cobabench.mazebm.BracketBalancer" ; // 500 pps
 		//String CUT = "cobabench.mazebm.ConnectedComponents" ;		
 		//String CUT = "cobabench.mazebm.ConvergingPaths" ;
-		// String CUT = "cobabench.mazebm.Dijkstra" ; // challenge
+		 //String CUT = "cobabench.mazebm.Dijkstra" ; // challenge
 		//String CUT = "cobabench.mazebm.ExprEvaluator" ; 
 		//String CUT = "cobabench.mazebm.FloatStatistics" ;
 		//String CUT = "cobabench.mazebm.GraphTraversal" ;
 		//String CUT = "cobabench.mazebm.HeapSort" ;
-		String CUT = "cobabench.mazebm.MatrixAnalyzer" ;
-		//String CUT = "cobabench.mazebm.NestedLoops" ;
+		//String CUT = "cobabench.mazebm.MatrixAnalyzer" ;
+		//String CUT = "cobabench.mazebm.NestedLoops" ;// 56598 pps???
 		//String CUT = "cobabench.mazebm.QuickSort" ; 
 		//String CUT = "cobabench.mazebm.StringPatternMatcher" ; 
 		//String CUT = "cobabench.mazebm.SinglyLinkedList" ;
@@ -70,8 +70,8 @@ public class CobaMaze {
 				      //+ sp + "-s=COS"
 				      //+ sp + "-s=PS" + sp + "-u=DTUH"
 				      //+ sp + "-m=isComplexValidTreeHelper"
-				      //+ sp + "-s=BFS"
-				      + sp + "-s=PCS"
+				      + sp + "-s=BFS"
+				      //+ sp + "-s=PCS"
 				      
 				      
 				      + sp + "--minimalistic-suite=true"
@@ -79,11 +79,15 @@ public class CobaMaze {
 				      + sp + "-b=60"
 				      //+ sp + "-l=DEBUG" // log level
 				      //+ sp + "--max-depth=100"
-				      + sp + "--max-array-size=4"
+				      + sp + "--max-array-size=10"
 				      + sp + "--constrain-FP-params-to-normal-numbers=true"
 				      + sp + "--check-divbyZero"
 				      //+ sp + "--surpress-regression-oracles=false"
 				      //+ sp + "--propagate-unexpected-exceptions=true"
+				      + sp + "--exportJimple=-1"
+				      + sp + "--exportHCFG=-1"
+				      + sp + "--exportTargetPaths=-1" 
+				      + sp + "--exportPathCovInfo=-1" 				      
 				      + sp
 				      ;
 

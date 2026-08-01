@@ -101,7 +101,7 @@ public class MazeCLI implements Callable<Integer> {
     @Option(names = { "--propagate-unexpected-exceptions" }, description = "When true, when a test throws an exception that is not declared as expected exception by the method under test, it will be propagated. So, it will not be asserted as an expected exception by the test oracle. Note that this means the test will then fail (a potential bug is found by Maze) (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean propagateUnexpectedExceptions ;
     
-    @Option(names = { "--do-not-close-z3-context" }, description = "When true, will not close internal z3 context. Only used for testing MAZE. (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
+    @Option(names = { "--do-not-close-z3-context" }, description = "When true, will not close internal z3 context. ONLY USED FOR TESTING MAZE. (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean leaveZ3ContextOpen ;
     
     @Option(names = { "--check-divbyZero" }, description = "When true, MAZE will actively check expressions of the form x/y and x%y, whether a division or remainder by zero error can occur. (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
@@ -109,6 +109,19 @@ public class MazeCLI implements Callable<Integer> {
     
     @Option(names = { "--max-array-size" }, description = "Maximum array size. (default: ${DEFAULT-VALUE})", defaultValue = "20", paramLabel = "<int>")
     private int max_array_size ;
+    
+    @Option(names = { "--exportJimple" }, description = "If 1, will export the Jimple code of every target method to a file. If -1 will print it to log.info. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<1|-1|0>")
+    private int exportJimple ;
+    
+    @Option(names = { "--exportHCFG" }, description = "If 1, will export the high-level CFG of every target method to a dot-file. If -1 will print it to log info. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<1|-1|0>")
+    private int exportHCFG ;
+    
+    @Option(names = { "--exportTargetPaths" }, description = "If 1, will export the target paths of every target method to a file. If -1 will print them to log info. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<1|-1|0>")
+    private int exportTargetPaths ;
+    
+    @Option(names = { "--exportPathCovInfo" }, description = "If 1, will export path coverage info to a file. If -1 will print it to log info. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<1|-1|0>")
+    private int exportPathCovInfo ;
+    
     
     @Override
     public Integer call() {
@@ -127,8 +140,12 @@ public class MazeCLI implements Callable<Integer> {
             EngineConfiguration.getInstance().minimalisticTestSuite = this.minimalisticTestSuite ;
             EngineConfiguration.getInstance().max_array_size = this.max_array_size ;
             EngineConfiguration.getInstance().pathLengthCoverage = this.pathLengthCoverage ;
-            
-            
+            EngineConfiguration.getInstance().exportJimple = this.exportJimple ;
+            EngineConfiguration.getInstance().exportHCFG = this.exportHCFG ;
+            EngineConfiguration.getInstance().exportTargetPaths = this.exportTargetPaths ;
+            EngineConfiguration.getInstance().exportPathCovInfo = this.exportPathCovInfo ;
+
+            EngineConfiguration.getInstance().outPath = this.outPath ;            
             
             // dealing with the rest of the options:
             
@@ -143,7 +160,7 @@ public class MazeCLI implements Callable<Integer> {
                     searchHeuristics, heuristicWeights, timeBudget);
 
             Long start = System.currentTimeMillis();
-            DSEController controller = new DSEController(classPath, concreteDriven, strategy, outPath,
+            DSEController controller = new DSEController(classPath, concreteDriven, strategy,
                     methodName, maxDepth, testTimeout, packageName, junitVersion.isJUnit4());
             controller.run(className, timeBudget);
             Long end = System.currentTimeMillis();

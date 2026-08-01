@@ -34,6 +34,7 @@ import nl.uu.maze.search.strategy.SearchStrategy;
 import nl.uu.maze.search.strategy.SymbolicSearchStrategy;
 import nl.uu.maze.util.BranchStmtUtil;
 import nl.uu.maze.util.HCFG;
+import nl.uu.maze.util.IOUtils;
 import nl.uu.maze.util.Pair;
 import sootup.core.graph.StmtGraph;
 import sootup.core.jimple.common.stmt.Stmt;
@@ -99,7 +100,7 @@ public class DSEController {
      * @param packageName    The package name for the generated test files
      */
     public DSEController(String classPath, boolean concreteDriven, SearchStrategy<?> searchStrategy,
-            String outPath, String methodName, int maxDepth, long testTimeout, String packageName, boolean targetJUnit4)
+            String methodName, int maxDepth, long testTimeout, String packageName, boolean targetJUnit4)
             throws Exception {
         instrumenter = new BytecodeInstrumenter(classPath);
         ClassLoader classLoader;
@@ -124,7 +125,7 @@ public class DSEController {
         // class-loader:
         classLoader = instrumenter.getClassLoader();
         
-        this.outPath = Path.of(outPath);
+        this.outPath = Path.of(EngineConfiguration.getInstance().outPath);
         this.methodName = methodName;
         this.maxDepth = maxDepth;
         this.concreteDriven = concreteDriven;
@@ -184,7 +185,6 @@ public class DSEController {
             	if (!method.isPublic()) {
             		// but coverage over non-public methods are still tracked
             		CoverageTracker.getInstance().addTarget(method) ;
-                    //System.out.println(">>> " + method.getName() + "\n" + method.getBody()) ;
             	}
             	
                 continue;
@@ -197,15 +197,6 @@ public class DSEController {
                 nonStaticMuts.add(method);
             }
             CoverageTracker.getInstance().addTarget(method) ;
-            //debugPrintCFGs(method) ;
-            //var HCFG = new HighLevelCFG(method) ;
-            //System.out.println(">>>> HCFG: " + HCFG) ;
-            //HCFG.saveAsDot(null) ;
-            //var targetPaths = HCFG.getMaxElementaryPaths(-1) ;
-            //System.out.println(">>>> #targets = " + targetPaths.size()) ;
-            //for (var t : targetPaths) {
-            //	System.out.println("   * target " + t) ;
-            //}
         }
 
         if (staticMuts.isEmpty() && nonStaticMuts.isEmpty()) {
@@ -248,6 +239,10 @@ public class DSEController {
         try {
             run();
         } finally {
+        	
+        	generator.writeToFile(outPath); 
+            logger.info("#generated test-cases: {}", generator.getNumberOfGeneratedTestCases()) ;
+            
         	logger.info("#items explored: " + searchStrategy.getTotalExploredCount()) ;
         	int stmtTargets = CoverageTracker.getInstance().numberOfTargetStmts() ;
         	int stmtCovered = stmtTargets - CoverageTracker.getInstance().numberOfStillUnCoveredStmts() ;
@@ -263,16 +258,27 @@ public class DSEController {
         			+ ", #untargeted-branches covered: " + untargetdBranchCovered) ;
         	if (EngineConfiguration.getInstance().pathLengthCoverage == -1
         			|| EngineConfiguration.getInstance().pathLengthCoverage >= 1)
-        		logger.info("k-path-converage    (by test): " + pathCovered + "/" + pathTargets) ;
+        		logger.info("k-path-converage    (by test): " + pathCovered + "/" + pathTargets
+        				+ ", dropped: " + CoverageTracker.getInstance().numberOfDroppedTargetPaths()
+        				) ;
         	
-        	
-        	generator.writeToFile(outPath); 
-            logger.info("#generated test-cases: {}", generator.getNumberOfGeneratedTestCases()) ;
-            if (generator.getNumberOfViolationFound() > 0) {
-            	logger.info("There were {} test/s that threw an unexpected exception. They may be errors.",  generator.getNumberOfViolationFound()) ;
+        	if (generator.getNumberOfViolationFound() > 0) {
+            	logger.info("There were {} test/s that threw an unexpected exception. They may be ERRORs.",  generator.getNumberOfViolationFound()) ;
             }
             
-            CoverageTracker.getInstance().debugPrintCoveredPaths();
+            switch(EngineConfiguration.getInstance().exportPathCovInfo) {
+                case -1 : logger.info("Path-coverage info:\n" + CoverageTracker.getInstance().showPathCoverageInfo()) ;
+            	   	      break ;
+                case 1: String classname = clazz.getName() ;
+                        String file = Paths.get(EngineConfiguration.getInstance().outPath, classname + "-pathcov.txt").toString() ;
+                        try {
+                        	IOUtils.saveTxtToFile(file, CoverageTracker.getInstance().showPathCoverageInfo()) ;
+                        }
+                        catch(Exception e) {
+                        	logger.error("Failed to save the path-coverage info of " + classname) ;
+                        } ;
+                        break ;
+            }
             
         }
     }

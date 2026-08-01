@@ -123,6 +123,41 @@ public class HCFG extends DiGraph<Stmt,Stmt,nl.uu.maze.util.HCFG.HCFGNodeType,St
 			return seq ;
 		}
 		
+		public String toStringCompact() {
+			String z = "" ;
+			int k = 0 ;
+			for (var E : path) {
+				if (k > 0) {
+					z += " -> " ;
+				}
+				var nd = E.src ;
+				if (HCFG.isBranchingNode(nd)) {
+					z += "[" + nd.id + "]" ;
+				}
+				else {
+					z += nd.id ;
+				}
+				if (k==0 && HCFG.isExceptionHandlerHead(nd)) {
+					z += "[EXC-head]" ;
+				}
+				k++ ;
+			}
+			var last = path.getLast().dest ;
+			z += " -> " ;
+			if (HCFG.isBranchingNode(last)) {
+				z += "[" + last.id + "]" ;
+			}
+			else {
+				z += last.id ;
+			}
+			if (isExitNode(last))
+				z += " [EXIT]" ;
+			if (last == path.getFirst().src) 
+				z += " [CYCLIC]" ;
+			
+			return z ;
+		}
+		
 		@Override
 		public String toString() {
 			String z = "" ;

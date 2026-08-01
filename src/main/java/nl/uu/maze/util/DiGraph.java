@@ -372,10 +372,11 @@ public class DiGraph<NodeLabel,EdgeLabel,NodeProperty,EdgeProperty> {
 	}
 	
 	/**
-	 * Save the graph as a dot-file for visualization. If fname is null, the dot
-	 * graph will be printed to the console.
+	 * Show the graph as a dot-file (Graphiz) for visualization. Well.. it will return 
+	 * a DotWriter dw. Then dw.toString() will give you the string content,
+	 * which you can save to a file as its content,
 	 */
-	public void saveAsDot(String fname) throws IOException {
+	public DotWriter asDot() {
 		DotWriter dot = new DotWriter(this.name) ;
 		for (var nd : nodes) {
 			String label = "" + nd.label ;
@@ -403,13 +404,17 @@ public class DiGraph<NodeLabel,EdgeLabel,NodeProperty,EdgeProperty> {
 			}
 		}
 		dot.close();
-		if (fname == null) {
-			System.out.println(dot.toString()) ;
-		}
-		else {
-			dot.saveToFile(fname);
-		}
+		return dot ;
 	}
+	
+	/**
+	 * Save the graph as a dot-file for visualization. If fname is null, the dot
+	 * graph will be printed to the console.
+	 */
+	public void saveAsDot(String fname) throws IOException {
+		asDot().saveToFile(fname);
+	}
+	
 	
 	@Override
 	public String toString() {
