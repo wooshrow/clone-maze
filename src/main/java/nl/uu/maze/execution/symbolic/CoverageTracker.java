@@ -349,9 +349,12 @@ public class CoverageTracker {
             	if (newcov > 0) hasNewCoverage = true ;
     		}
     		
-    		System.out.println(">>> CoverageTracker, registering a candidate test" 
-    				+ (hasNewCoverage ? " +new-COV " : "")
-    				+ ", remaining #uncoverared-paths: " + numberOfStillUncoveredTargetPaths()) ;
+    		logger.info("Registering a candidate test." 
+    				+ (hasNewCoverage ? "+new-COV." : "")
+    				+ (numberOfTargetPaths() > 0 ?
+    						" Remaining #uncoverared-paths: " + numberOfStillUncoveredTargetPaths()
+    						: "")
+    				) ;
     	}
     	
     	if (hasNewCoverage) dirty = true ;
@@ -488,7 +491,7 @@ public class CoverageTracker {
      * Note that the engine does not typically check whether sigma is really
      * unfeasible, but it may consider it unfeasible based on some heuristics.
      */
-    public void markTargetPathUnfeasible(HCFGPath sigma) {
+    public boolean markTargetPathUnfeasible(HCFGPath sigma) {
     	for (var T : stillUncoveredTargetPaths.entrySet()) {
     		var targets = T.getValue() ;
     		var removed = targets.remove(sigma) ;
@@ -498,9 +501,10 @@ public class CoverageTracker {
     			var dropped = droppedTargetPaths.get(method) ;
     			dropped.add(sigma) ;
     			dirty = true ;
-    			return ;
+    			return true ;
     		}
     	}
+    	return false ;
     }
     
     /**

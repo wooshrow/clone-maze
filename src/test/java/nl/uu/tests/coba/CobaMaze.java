@@ -34,7 +34,7 @@ public class CobaMaze {
 		//String CUT = "cobabench.CobaSettingCUTfields" ;
 		//String CUT = "cobabench.CobaExceptionHandlers" ;
 		//String CUT = "cobabench.CobaGraphTraversal" ;
-		String CUT = "cobabench.CobaSimplePaths" ;
+		//String CUT = "cobabench.CobaSimplePaths" ;
 		
 		// classes from Maze-bm:
 		//String CUT = "cobabench.mazebm.TriangleClassifier" ;
@@ -53,7 +53,7 @@ public class CobaMaze {
 		//String CUT = "cobabench.mazebm.GraphTraversal" ;
 		//String CUT = "cobabench.mazebm.HeapSort" ;
 		//String CUT = "cobabench.mazebm.MatrixAnalyzer" ;
-		//String CUT = "cobabench.mazebm.NestedLoops" ;// 56598 pps???
+		String CUT = "cobabench.mazebm.NestedLoops" ;// 56598 pps???
 		//String CUT = "cobabench.mazebm.QuickSort" ; 
 		//String CUT = "cobabench.mazebm.StringPatternMatcher" ; 
 		//String CUT = "cobabench.mazebm.SinglyLinkedList" ;
@@ -70,12 +70,13 @@ public class CobaMaze {
 				      //+ sp + "-s=COS"
 				      //+ sp + "-s=PS" + sp + "-u=DTUH"
 				      //+ sp + "-m=isComplexValidTreeHelper"
-				      + sp + "-s=BFS"
-				      //+ sp + "-s=PCS"
+				      //+ sp + "-s=BFS"
+				      + sp + "-s=PCS"
 				      
 				      
 				      + sp + "--minimalistic-suite=true"
-				      + sp + "--path-length-cov=-1"
+				      + sp + "--path-length-cov=3"
+				      + sp + "--target-path-aging=0"
 				      + sp + "-b=60"
 				      //+ sp + "-l=DEBUG" // log level
 				      //+ sp + "--max-depth=100"
@@ -84,11 +85,11 @@ public class CobaMaze {
 				      + sp + "--check-divbyZero"
 				      //+ sp + "--surpress-regression-oracles=false"
 				      //+ sp + "--propagate-unexpected-exceptions=true"
-				      + sp + "--exportJimple=-1"
-				      + sp + "--exportHCFG=-1"
-				      + sp + "--exportTargetPaths=-1" 
-				      + sp + "--exportPathCovInfo=-1" 		
-				      + sp + "--exportSummary=true" 	
+				      + sp + "--export-jimple=-1"
+				      + sp + "--export-HCFG=-1"
+				      //+ sp + "--export-target-paths=-1" 
+				      //+ sp + "--export-pathcov=-1" 		
+				      //+ sp + "--export-summary=true" 	
 				      
 				      + sp
 				      ;

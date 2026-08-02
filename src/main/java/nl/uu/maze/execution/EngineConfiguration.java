@@ -121,6 +121,23 @@ public class EngineConfiguration {
       */
      public int pathLengthCoverage = 0 ;
      
+     
+     /**
+      * Some strategy e.g. PCS may remove a target path after attempts to cover them
+      * seem to be failing. This is determined by the path age. In PCS this means
+      * the number of engine iterations since the last best attempt to cover the path
+      * (the one that gives the best partial coverage). This parameter sets the maximum
+      * age before it becomes a candidate to be dropped as a target.
+      * 
+      * <p>-1 means there is no aging, so the target will never be dropped.
+      * 
+      * <p>0 means that the total number of instructions in the CUT is used to estimate
+      * the age setting, which is set to 2x #instructions.
+      * 
+      * <p>Default: -1.
+      */
+     public int targetPathAging = -1 ;
+     
      /**
       * If 1, the Jimple-code of every target class will be exported to a file. 
       * If -1 it will be printed to log.info. If 0 it will not be saved nor printed.

@@ -91,6 +91,10 @@ public class MazeCLI implements Callable<Integer> {
     
     @Option(names = { "--path-length-cov" }, description = "If non-zero, the length of elementary paths to cover. If -1, prime paths. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<int>")
     private int pathLengthCoverage;
+    
+    @Option(names = { "--target-path-aging"}, description = "Set target path aging before being dropped. If -1 target paths don't age. If -0, CUT size is used as aging param. (default: ${DEFAULT-VALUE})", defaultValue = "-1", paramLabel = "<int>")
+    private int targetPathAging;
+    
 
     @Option(names = { "--constrain-FP-params-to-normal-numbers" }, description = "When true will constrain the symbolic solver to generate normal numbers for floating-point-like methods parameters (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean constrainFPNumberParametersToNormalNumbers ;
@@ -110,19 +114,19 @@ public class MazeCLI implements Callable<Integer> {
     @Option(names = { "--max-array-size" }, description = "Maximum array size. (default: ${DEFAULT-VALUE})", defaultValue = "20", paramLabel = "<int>")
     private int max_array_size ;
     
-    @Option(names = { "--exportJimple" }, description = "If 1, will export the Jimple code of every target method to a file. If -1 will print it to log.info. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<1|-1|0>")
+    @Option(names = { "--export-jimple" }, description = "If 1, will export the Jimple code of every target method to a file. If -1 will print it to log.info. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<1|-1|0>")
     private int exportJimple ;
     
-    @Option(names = { "--exportHCFG" }, description = "If 1, will export the high-level CFG of every target method to a dot-file. If -1 will print it to log info. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<1|-1|0>")
+    @Option(names = { "--export-HCFG" }, description = "If 1, will export the high-level CFG of every target method to a dot-file. If -1 will print it to log info. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<1|-1|0>")
     private int exportHCFG ;
     
-    @Option(names = { "--exportTargetPaths" }, description = "If 1, will export the target paths of every target method to a file. If -1 will print them to log info. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<1|-1|0>")
+    @Option(names = { "--export-target-paths" }, description = "If 1, will export the target paths of every target method to a file. If -1 will print them to log info. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<1|-1|0>")
     private int exportTargetPaths ;
     
-    @Option(names = { "--exportPathCovInfo" }, description = "If 1, will export path coverage info to a file. If -1 will print it to log info. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<1|-1|0>")
+    @Option(names = { "--export-pathcov" }, description = "If 1, will export path coverage info to a file. If -1 will print it to log info. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<1|-1|0>")
     private int exportPathCovInfo ;
     
-    @Option(names = { "--exportSummary" }, description = "If true, will export basic test statistics to a csv file. (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
+    @Option(names = { "--export-summary" }, description = "If true, will export basic test statistics to a csv file. (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean exportSummary ;
     
     
@@ -144,6 +148,8 @@ public class MazeCLI implements Callable<Integer> {
             EngineConfiguration.getInstance().minimalisticTestSuite = this.minimalisticTestSuite ;
             EngineConfiguration.getInstance().max_array_size = this.max_array_size ;
             EngineConfiguration.getInstance().pathLengthCoverage = this.pathLengthCoverage ;
+            EngineConfiguration.getInstance().targetPathAging = this.targetPathAging ;
+
             EngineConfiguration.getInstance().exportJimple = this.exportJimple ;
             EngineConfiguration.getInstance().exportHCFG = this.exportHCFG ;
             EngineConfiguration.getInstance().exportTargetPaths = this.exportTargetPaths ;

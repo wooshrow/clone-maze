@@ -25,7 +25,7 @@ import sootup.java.core.JavaSootMethod;
 
 public class PathCoverSearch extends SearchStrategy<SymbolicState> {
 	
-	private static final Logger logger = LoggerFactory.getLogger(PathCoverSearch.class);
+	static final Logger logger = LoggerFactory.getLogger(PathCoverSearch.class);
     
 	
 	static int ordering1(SymbolicState S1, SymbolicState S2) {
@@ -54,17 +54,14 @@ public class PathCoverSearch extends SearchStrategy<SymbolicState> {
 	}
 	
 	
-	private CoverageTracker coverageTracker = CoverageTracker.getInstance() ;
+	CoverageTracker coverageTracker = CoverageTracker.getInstance() ;
 	
-	private PriorityQueue<SymbolicState> priority = new PriorityQueue<>((S1,S2) -> ordering1(S1,S2)) ;
-	private Queue<SymbolicState> theRest = new LinkedList<>() ;
+	PriorityQueue<SymbolicState> priority = new PriorityQueue<>((S1,S2) -> ordering1(S1,S2)) ;
+	Queue<SymbolicState> theRest = new LinkedList<>() ;
 	
 	Map<HCFGPath,TargetProgress> progressTracking = new IdentityHashMap<>() ;
 
-	/**
-	 * Using identity-hash-map, that uses == rather than equals.
-	 */
-	private Map<Stmt,Integer> stmtVisitCount = new IdentityHashMap<>() ;
+	Integer agingLimit = null ;
 	
 	/** iteration count. Updated whenever next() is invoked. */
 	int iteration = 0 ;
@@ -135,7 +132,7 @@ public class PathCoverSearch extends SearchStrategy<SymbolicState> {
 	
 	@Override
 	public SymbolicState next() {
-		System.out.println("PCS next() #targets:" + size()) ;
+		//System.out.println("PCS next() #targets:" + size()) ;
 		
 		if (coverageTracker.isDirty()) {
 			// coverage tracker is dirty, recalculate targets:
@@ -165,14 +162,14 @@ public class PathCoverSearch extends SearchStrategy<SymbolicState> {
 				}
 			}
 		
-			System.out.println("### re-targeting " + tel + ", #targets=" + size()) ;
+			logger.info("Re-targeting {}/{} states.", tel, size()) ;
 			
 			
 			coverageTracker.cleanDirtyFlag() ;
 		}
 		
 		
-		System.out.println(">>> PCS P=" + priority.size() + " R=" + theRest.size()) ;
+		//System.out.println(">>> PCS P=" + priority.size() + " R=" + theRest.size()) ;
 		
 		SymbolicState S = priority.poll() ;
 		if (S == null) 
@@ -189,18 +186,35 @@ public class PathCoverSearch extends SearchStrategy<SymbolicState> {
 		
 		// updating progress-tracking
 		if (iteration % 20 == 0) {
-			var covered = coverageTracker.whichTargetPathsAreCovered(progressTracking.keySet().stream().toList()) ;
-			for (var sigma : covered) {
-				progressTracking.remove(sigma) ;
+			if (agingLimit == null) {
+				agingLimit = EngineConfiguration.getInstance().targetPathAging ;
+				if (agingLimit == 0) 
+					agingLimit = 2 * CoverageTracker.getInstance().numberOfTargetStmts() ;
 			}
-			// checking non-progress:
-			var nonprogress = progressTracking.entrySet().stream()
-					.filter(P -> P.getValue().lastImprovement < iteration - 1000)
-					.map(P -> P.getKey())
-					.toList() ;
-			for (var sigma : nonprogress) {
-				coverageTracker.markTargetPathUnfeasible(sigma);
-			}
+			if (agingLimit >= 0) {
+				var covered = coverageTracker.whichTargetPathsAreCovered(progressTracking.keySet().stream().toList()) ;
+			    //System.out.println("PCS >>> #progresstracking:" + progressTracking.size()
+			    //		+ ", #covered:" + covered.size()
+			    //		) ;
+				for (var sigma : covered) {
+					progressTracking.remove(sigma) ;
+				}
+				//System.out.println("PCS >>> #progresstracking:" + progressTracking.size()) ;
+				// checking non-progress:
+				int agingLimit_ = agingLimit ;
+				var nonprogress = progressTracking.entrySet().stream()
+						.filter(P -> P.getValue().lastImprovement < iteration - agingLimit_)
+						.map(P -> P.getKey())
+						.toList() ;
+				int numberRemoved = 0 ;
+				for (var sigma : nonprogress) {
+					var removed = coverageTracker.markTargetPathUnfeasible(sigma);
+					if (removed) numberRemoved++ ;
+				}
+				if (numberRemoved > 0) {
+					logger.info("Dropping {} target paths", numberRemoved) ;
+				}
+			}	
 		}
 		
 		iteration++ ;
