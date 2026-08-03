@@ -162,9 +162,11 @@ public class CoverageTracker {
     	hcfgs.put(method, hcfg) ;
     	
     	int k = EngineConfiguration.getInstance().pathLengthCoverage ;
+    	int numOfTargetPaths = 0 ;
     	if (k==-1 || k>=1) {
     		var targets = hcfg.getMaxElementaryPaths2(k) ;
     		targetPaths.put(method, targets) ;
+    		numOfTargetPaths = targets.size() ;
         	List<HCFGPath> targets__ = new LinkedList<>() ;
         	targets__.addAll(targets) ;
         	stillUncoveredTargetPaths.put(method, targets__) ;
@@ -183,7 +185,6 @@ public class CoverageTracker {
         	}
     	}
     	
-    	int numOfTargetPaths = this.targetPaths.get(method).size() ;
     	logger.info("Added " + method.getName() + " as a target, #stmts:" + method.getBody().getStmts().size()
     			+ ", #branches:" + addedBranches
     			+ (numOfTargetPaths > 0 ? ", #target-k-paths:" + numOfTargetPaths : "")) ;

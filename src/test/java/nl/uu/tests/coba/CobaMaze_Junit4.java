@@ -9,7 +9,7 @@ import java.nio.file.Files;
 import org.junit.jupiter.api.Test;
 
 // Just for trying out Maze-application, for convenience, invoked from here
-public class CobaMaze {
+public class CobaMaze_Junit4 {
 	
 	@Test
 	void coba_Maze() {
@@ -51,28 +51,27 @@ public class CobaMaze {
 		//String CUT = "cobabench.mazebm.ExprEvaluator" ; 
 		//String CUT = "cobabench.mazebm.FloatStatistics" ;
 		//String CUT = "cobabench.mazebm.GraphTraversal" ;
-		//String CUT = "cobabench.mazebm.HeapSort" ;
+		String CUT = "cobabench.mazebm.HeapSort" ;
 		//String CUT = "cobabench.mazebm.MatrixAnalyzer" ;
 		//String CUT = "cobabench.mazebm.NestedLoops" ;// 56598 pps???
 		//String CUT = "cobabench.mazebm.QuickSort" ; 
 		//String CUT = "cobabench.mazebm.StringPatternMatcher" ; 
 		//String CUT = "cobabench.mazebm.SinglyLinkedList" ;
 		
-		String CUT = "cobabench.svcomp.float_nonlinear_calculation.Optimization" ; 
-		
+			
 		String sp = " " ;
 
 		String argz =   "--classpath=" + cobabenchPath + "/target/classes"
 				      + sp + "--classname=" + CUT 
 				      + sp + "--output-path=" + cobabenchPath + "/src/test/java/"
 				      //+ sp + "-C"
-				      // + sp + "-j=JUnit4"
+				      + sp + "-j=JUnit4"
 				      //+ sp + "-s=RPS" 
 				      //+ sp + "-s=COS"
 				      //+ sp + "-s=PS" + sp + "-u=DTUH"
 				      //+ sp + "-m=isComplexValidTreeHelper"
-				      + sp + "-s=BFS"
-				      //+ sp + "-s=PCS"
+				      //+ sp + "-s=BFS"
+				      + sp + "-s=PCS"
 				      
 				      
 				      + sp + "--minimalistic-suite=true"

@@ -337,20 +337,45 @@ public class JUnitTestGenerator {
                 if (isArray) {
                     //methodBuilder.addStatement("$T.assertArrayEquals(expected, retval)",
                     //        targetJUnit4 ? org.junit.Assert.class : Assertions.class);
-                    addStatementOrComment(methodBuilder, 
-                			EngineConfiguration.getInstance().surpressRegressionOracles,
-                			"$T.assertArrayEquals(expected, retval)",
-                			AssertClass) ;
+                	
+                	// For JUnit 4, assertArrayEquals on float and double values requires a delta
+                	if (targetJUnit4 && (retval instanceof float[] || retval instanceof Float[])) {
+                		addStatementOrComment(methodBuilder, 
+                    			EngineConfiguration.getInstance().surpressRegressionOracles,
+                    			"$T.assertArrayEquals(expected, retval, 0.0001f)",
+                    			AssertClass) ;
+                	}
+                	else if (targetJUnit4 && (retval instanceof double[] || retval instanceof Double[])) {
+                		addStatementOrComment(methodBuilder, 
+                    			EngineConfiguration.getInstance().surpressRegressionOracles,
+                    			"$T.assertArrayEquals(expected, retval, 0.0001)",
+                    			AssertClass) ;
+                	}
+                	else {
+                		addStatementOrComment(methodBuilder, 
+                    			EngineConfiguration.getInstance().surpressRegressionOracles,
+                    			"$T.assertArrayEquals(expected, retval)",
+                    			AssertClass) ;
+                	}
                 } else {
                     // For JUnit 4, assertEquals on float and double values requires a delta
-                    if (targetJUnit4 && (retval instanceof Float || retval instanceof Double)) {
+                    if (targetJUnit4 && retval instanceof Float) {
+                        //methodBuilder.addStatement("$T.assertEquals(expected, retval, 0.0001)",
+                        //       targetJUnit4 ? org.junit.Assert.class : Assertions.class);
+                        addStatementOrComment(methodBuilder, 
+                    			EngineConfiguration.getInstance().surpressRegressionOracles,
+                    			"$T.assertEquals(expected, retval, 0.0001f)",
+                    			AssertClass) ;
+                    } 
+                    else if (targetJUnit4 && retval instanceof Double) {
                         //methodBuilder.addStatement("$T.assertEquals(expected, retval, 0.0001)",
                         //       targetJUnit4 ? org.junit.Assert.class : Assertions.class);
                         addStatementOrComment(methodBuilder, 
                     			EngineConfiguration.getInstance().surpressRegressionOracles,
                     			"$T.assertEquals(expected, retval, 0.0001)",
                     			AssertClass) ;
-                    } else {
+                    }
+                    else {
                         //methodBuilder.addStatement("$T.assertEquals(expected, retval)",
                         //        targetJUnit4 ? org.junit.Assert.class : Assertions.class);
                     	addStatementOrComment(methodBuilder, 
