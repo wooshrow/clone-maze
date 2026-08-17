@@ -6,8 +6,7 @@ The engine analyzes JVM bytecode and uses a combination of symbolic and concrete
 It supports various search strategies and can handle complex data structures, including arrays and objects.
 Constraint solving is powered by the Z3 theorem prover.
 
-This project was developed as part of a master's thesis at Utrecht University.
-The thesis focuses on comparing the effectiveness of different search strategies and heuristics in automated test generation using DSE, and can be accessed [here](https://studenttheses.uu.nl/handle/20.500.12932/49026).
+In depth paper about MAZE, including its formal semantics, can be found [here](https://studenttheses.uu.nl/handle/20.500.12932/49026).
 
 ## ▊▎ Getting Started
 
