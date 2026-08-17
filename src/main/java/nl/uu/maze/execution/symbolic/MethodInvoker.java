@@ -18,6 +18,7 @@ import nl.uu.maze.execution.ArgMap.ObjectRef;
 import nl.uu.maze.execution.MethodType;
 import nl.uu.maze.execution.concrete.*;
 import nl.uu.maze.execution.symbolic.HeapObjects.*;
+import nl.uu.maze.model.ArithFunctions;
 import nl.uu.maze.model.BoxedPrimitivesMethods;
 import nl.uu.maze.transform.JavaToZ3Transformer;
 import nl.uu.maze.transform.JimpleToJavaTransformer;
@@ -115,6 +116,15 @@ public class MethodInvoker {
         if(BoxedPrimitivesMethods.MODELof_Boolean_valueOf.executeModel(state, base, expr) != null) {
         	return Optional.empty();
         }
+        if(ArithFunctions.MODELof_SqRoot.executeModel(state, base, expr) != null) {
+        	return Optional.empty();
+        }
+        // DISABLING these ... expensive to solve:
+        //if(ArithFunctions.MODELof_DoublePow.executeModel(state, base, expr) != null) {
+        	//System.out.println(">>> sym exec Math.pow") ;
+        //	return Optional.empty();
+        //}
+        
         
         // If replaying a trace, do not symbolically execute java standard library
         // methods, because we do not have trace entries for those (not instrumented)

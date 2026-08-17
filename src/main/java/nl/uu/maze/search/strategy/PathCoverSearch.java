@@ -37,6 +37,22 @@ public class PathCoverSearch extends SearchStrategy<SymbolicState> {
 		return c ;
 	}
 	
+	static int ordering2(SymbolicState S1, SymbolicState S2) {
+		var tp1 = S1.getTargetPath() ;
+		var tp2 = S2.getTargetPath() ;
+		int c = Integer.compare(targetPathStatusToInt(tp1.status), targetPathStatusToInt(tp2.status)) ;
+		if (c != 0) return c ;
+		c = Float.compare(tp1.hdist, tp2.hdist) ;
+		if (c != 0) return c ;
+		double cost1 = S1.getPathConstraints().stream()
+				.mapToDouble(C -> C.getEstimatedCost())
+			    .sum() ;
+		double cost2 = S2.getPathConstraints().stream()
+				.mapToDouble(C -> C.getEstimatedCost())
+			    .sum() ;
+		return Double.compare(cost1, cost2) ;
+	}
+	
 	static int targetPathStatusToInt(TargetPathStatus status) {
 		switch(status) {
 		case TARGET_COVERED : return 0 ;
@@ -56,7 +72,7 @@ public class PathCoverSearch extends SearchStrategy<SymbolicState> {
 	
 	CoverageTracker coverageTracker = CoverageTracker.getInstance() ;
 	
-	PriorityQueue<SymbolicState> priority = new PriorityQueue<>((S1,S2) -> ordering1(S1,S2)) ;
+	PriorityQueue<SymbolicState> priority = new PriorityQueue<>((S1,S2) -> ordering2(S1,S2)) ;
 	Queue<SymbolicState> theRest = new LinkedList<>() ;
 	
 	Map<HCFGPath,TargetProgress> progressTracking = new IdentityHashMap<>() ;

@@ -35,6 +35,10 @@ public class CobaMaze {
 		//String CUT = "cobabench.CobaExceptionHandlers" ;
 		//String CUT = "cobabench.CobaGraphTraversal" ;
 		//String CUT = "cobabench.CobaSimplePaths" ;
+		//String CUT = "cobabench.CobaArithFunctions" ;
+		String CUT = "cobabench.CobaAssert" ;
+		
+		
 		
 		// classes from Maze-bm:
 		//String CUT = "cobabench.mazebm.TriangleClassifier" ;
@@ -58,7 +62,7 @@ public class CobaMaze {
 		//String CUT = "cobabench.mazebm.StringPatternMatcher" ; 
 		//String CUT = "cobabench.mazebm.SinglyLinkedList" ;
 		
-		String CUT = "cobabench.svcomp.float_nonlinear_calculation.Optimization" ; 
+		//String CUT = "cobabench.svcomp.float_nonlinear_calculation.Optimization" ; 
 		
 		String sp = " " ;
 
@@ -71,19 +75,19 @@ public class CobaMaze {
 				      //+ sp + "-s=COS"
 				      //+ sp + "-s=PS" + sp + "-u=DTUH"
 				      //+ sp + "-m=isComplexValidTreeHelper"
-				      + sp + "-s=BFS"
-				      //+ sp + "-s=PCS"
+				      //+ sp + "-s=BFS"
+				      + sp + "-s=PCS"
 				      
 				      
 				      + sp + "--minimalistic-suite=true"
-				      + sp + "--path-length-cov=1"
+				      + sp + "--path-length-cov=3"
 				      + sp + "--target-path-aging=0"
 				      + sp + "-b=60"
 				      //+ sp + "-l=DEBUG" // log level
 				      //+ sp + "--max-depth=100"
 				      + sp + "--max-array-size=10"
 				      + sp + "--constrain-FP-params-to-normal-numbers=true"
-				      + sp + "--check-divbyZero"
+				      + sp + "--check-divbyZero=true"
 				      //+ sp + "--surpress-regression-oracles=false"
 				      //+ sp + "--propagate-unexpected-exceptions=true"
 				      + sp + "--export-jimple=-1"

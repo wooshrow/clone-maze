@@ -5,6 +5,7 @@ import com.microsoft.z3.BitVecSort;
 import com.microsoft.z3.Context;
 import com.microsoft.z3.Expr;
 import com.microsoft.z3.FPSort;
+import com.microsoft.z3.RealSort;
 import com.microsoft.z3.Sort;
 
 import sootup.core.signatures.PackageName;
@@ -29,6 +30,7 @@ public class Z3Sorts {
     private final BitVecSort longSort;
     private final FPSort floatSort;
     private final FPSort doubleSort;
+    private final RealSort realSort ;
 
     private Z3Sorts() {
         refSort = ctx().mkUninterpretedSort("Ref");
@@ -40,6 +42,7 @@ public class Z3Sorts {
         longSort = ctx().mkBitVecSort(getLongBitSize());
         floatSort = ctx().mkFPSort32();
         doubleSort = ctx().mkFPSort64();
+        realSort = ctx().mkRealSort() ;
     }
 
     public static Z3Sorts getInstance() {
@@ -79,6 +82,10 @@ public class Z3Sorts {
 
     public FPSort getDoubleSort() {
         return doubleSort;
+    }
+    
+    public RealSort getRealSort() {
+    	return realSort;
     }
 
     /**
