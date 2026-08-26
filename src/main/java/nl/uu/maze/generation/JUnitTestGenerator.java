@@ -183,6 +183,15 @@ public class JUnitTestGenerator {
         	violationDetected = true ;
         	logger.warn("a test for " + method.getName() + "(..,) throws an unexpected exception.");
         }
+        
+        if (EngineConfiguration.getInstance().verificationMode != 0
+        		&& ! violationDetected
+        		) {
+        	// if verification-mode is on, and the test does not yield
+        	// a violation, we won't generate it.
+        	return ;
+        }
+        	
            	
         AnnotationSpec.Builder testAnnotation = AnnotationSpec
                 .builder(targetJUnit4 ? org.junit.Test.class : Test.class);

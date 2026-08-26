@@ -105,6 +105,9 @@ public class MazeCLI implements Callable<Integer> {
     @Option(names = { "--propagate-unexpected-exceptions" }, description = "When true, when a test throws an exception that is not declared as expected exception by the method under test, it will be propagated. So, it will not be asserted as an expected exception by the test oracle. Note that this means the test will then fail (a potential bug is found by Maze) (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean propagateUnexpectedExceptions ;
     
+    @Option(names = { "--verificationMode" }, description = "if >0, MAZE will stop after finding that number of unexpected exceptions thrown by CUT. Only violating tests are generated. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<int>")
+    private int verificationMode ;
+    
     @Option(names = { "--do-not-close-z3-context" }, description = "When true, will not close internal z3 context. ONLY USED FOR TESTING MAZE. (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean leaveZ3ContextOpen ;
     
@@ -144,6 +147,11 @@ public class MazeCLI implements Callable<Integer> {
             EngineConfiguration.getInstance().constrainFPNumberParametersToNormalNumbers = this.constrainFPNumberParametersToNormalNumbers ;
             EngineConfiguration.getInstance().surpressRegressionOracles = this.surpressRegressionOracles ;
             EngineConfiguration.getInstance().propagateUnexpectedExceptions = this.propagateUnexpectedExceptions ;
+            EngineConfiguration.getInstance().verificationMode = this.verificationMode ;
+            if (verificationMode != 0) {
+            	// if verification mode is on, propagateUnexpectedExceptions is also set to true:
+            	EngineConfiguration.getInstance().propagateUnexpectedExceptions = true ;
+            }
             EngineConfiguration.getInstance().enableDivisionByZeroChecking = this.enableDivisionByZeroChecking ;
             EngineConfiguration.getInstance().minimalisticTestSuite = this.minimalisticTestSuite ;
             EngineConfiguration.getInstance().max_array_size = this.max_array_size ;

@@ -436,6 +436,12 @@ public class DSEController {
                     logger.info("Time budget exceeded while evaluating unifinished paths, stopping...");
                     break;
                 }
+                // also, stop if the engine is configured to do the verificagion-mode, 
+                // with k>0, and it has generated k test-cases with violations:
+                if (EngineConfiguration.getInstance().verificationMode > 0 &&
+                		generator.getNumberOfViolationFound() >= EngineConfiguration.getInstance().verificationMode) {
+                	break;
+                }
                 if (!state.isInfeasible()) {
                 	generateTestCase(state.returnToRootCaller());
                 }
@@ -526,6 +532,13 @@ public class DSEController {
             	&&  CoverageTracker.getInstance().allCoverageTargetsCompleted()) {
             	return concreteDriven ? Optional.of(current) : Optional.empty();
             }
+            // stop the search if the engine is configured to do the verificagion-mode, 
+            // with k>0, and it has generated k test-cases with violations:
+            if (EngineConfiguration.getInstance().verificationMode > 0 &&
+            		generator.getNumberOfViolationFound() >= EngineConfiguration.getInstance().verificationMode) {
+            	return concreteDriven ? Optional.of(current) : Optional.empty();
+            }
+            	
         	
             // Check if we are over the time budget
             if (System.currentTimeMillis() >= executionDeadline) {

@@ -29,13 +29,28 @@ public class EngineConfiguration {
 
     /**
      * When true, when a test throws an exception that is not declared as expected 
-     * exception by the method under test will be propagated. So, it will not be asserted as 
-     * an expected exception by the test oracle. Note that this means the test will 
+     * exception by the method under test, the exception will be propagated. So, it 
+     * will not be asserted as an expected exception by the test oracle. Note that this means the test will 
      * then fail (a potential bug is found by Maze).
      * 
      * <p>default: false.
      */
     public boolean propagateUnexpectedExceptions = false ;
+    
+    /**
+     * If the value is k != 0, MAZE will be in the verification mode. In this mode, when a test
+     * throws an exception that is not declared as expected exception by the method under test,
+     * the exception will be propagated. So, when the test is ran by Junit, it will result in 
+     * a violation. This is achieved by forcing the flag propagateUnexpectedExceptions to true.
+     * 
+     * <p>Additionally, only test-cases that will cause violations (as defined above) will
+     * be generated, and only up it k test cases. So, setting k=1 will cause MAZE to stop after
+     * the first found violation. If k<0, then all violating test cases will be generated 
+     * (bound by given time budget of course).
+     * 
+     * <p>default: 0.
+     */
+    public int verificationMode = 0 ;
     
     /**
      * When true, MAZE will actively check expressions of the form x/y and x%y, whether a

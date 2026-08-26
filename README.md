@@ -1,10 +1,50 @@
 # MAZE
 
-MAZE (Multi-strategy Automated Symbolic Execution) is a **dynamic symbolic execution (DSE)** engine for **automated test generation** of Java programs.
-
-The engine analyzes JVM bytecode and uses a combination of symbolic and concrete execution to explore program paths and generate JUnit 5 (or JUnit 4) test cases that aim to maximize code coverage.
+MAZE (Multi-strategy Automated Symbolic Execution) is a **dynamic symbolic execution (DSE)** engine to do **automated testing** of Java programs. It can be used to generate test cases, as well as for symbolically verifying assertions. The engine analyzes JVM bytecode and uses a combination of symbolic and concrete execution to explore program paths and generate JUnit 5 (or JUnit 4) test cases that aim to maximize code coverage.
 It supports various search strategies and can handle complex data structures, including arrays and objects.
 Constraint solving is powered by the Z3 theorem prover.
+
+### Example
+
+Here is a simple example, of a class named `EX0`, with a single (public) method called `isSorted`:
+
+```java
+class EX0{
+   int[] a ;
+   public CUT(int[] a){ this.a = a ; }
+   public int isSorted(){
+     for (int k=0; k<a.length-1; k++) if (a[k]>a[k+1]) return k ;      
+     return -1 ; }
+}  
+```
+
+To generate tests for this class we can do:
+
+`> java -jar maze.jar --classpath=somepath/classes ----classname=EX0 --minimalistic-suite=true -s=BFS -b=30`
+
+This will generate a class named `EX0Test.java`, containing JUnit test cases targeting all the public methods of `EX0`. In this example, `EX0` only has one public methods. The given time budget is 30 seconds, and the used search strategies is Breadth First Search (BFS). The generated test cases look like as shown below. Notice that regression oracles are also generated.
+
+```java
+bla bla
+```
+
+We can also use MAXE to verify assertions. To do this we write check-methods, e.g. as shown below, to check that the value returnd by `isSorted()` is always less than the length of the array `a` minus one:
+
+
+```java
+class CUT_Check{
+   static check(int[] a){
+     if (a != null) assert new CUT(a).isSorted() < a.length-1 ; }
+}  
+```
+To verify this we can do:
+
+`> java -jar maze.jar --classpath=somepath/classes ----classname=EX0 --minimalistic-suite=true -s=BFS -b=30 xxxx --verificationMode=1`
+
+Note that along every inspected program path, assertions are verified symbolically.
+
+
+### Papers
 
 In depth paper about MAZE, including its formal semantics, can be found [here](https://studenttheses.uu.nl/handle/20.500.12932/49026).
 
