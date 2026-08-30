@@ -27,6 +27,22 @@ public class EngineConfiguration {
 	 */
     public boolean surpressRegressionOracles = false ;
 
+    /** 
+     * This allows MAZE to changed the state/fields of the CUT by using reflection.
+     * Normally MAZE only sets the CUT fields when its constructor was invoked. So,
+     * if the constructor does not set a field x, it will have its Java default value,
+     * and MAZE will leave it like that. While the CUT may have setters, MAZE does
+     * not currently use them (to limit multiplying paths that have to be explored).
+     * <p>This flag allows MAZE to set the value of CUT's fields through reflection.
+     * Note that this is done by setting the initial value of CUT's fields to symbolic
+     * variables, rather than setting them to the their default values. This may lead
+     * to a test being generated that is actually not a feasible scenario on the CUT's
+     * actual use.
+     * 
+     * <p>Default: false.
+     */
+    public boolean allowCUTfieldschangeByReflection = false ;
+    
     /**
      * When true, when a test throws an exception that is not declared as expected 
      * exception by the method under test, the exception will be propagated. So, it 

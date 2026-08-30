@@ -148,13 +148,16 @@ public class DSEController {
      * Run the dynamic symbolic execution engine on the given class.
      * 
      * @param className  The name of the class to execute on
+     * @param classToTrack If not null, the name of the class whose coverage will 
+     *                   also be tracked. Note that coverage over className is 
+     *                   always tracked.
      * @param timeBudget The time budget for the search in ms (0 for no timeout)
      * @throws Exception If an error occurs during execution, or if the class cannot
      *                   be found in the class path
      * @implNote This method prepares the class for execution, while the
      *           {@link #run()} method actually runs the execution.
      */
-    public void run(String className, long timeBudget) throws Exception {
+    public void run(String className, String classToTrack, long timeBudget) throws Exception {
     	Long mystartTime = System.currentTimeMillis();
         this.timeBudget = timeBudget;
         // Instrument the class if concrete-driven
@@ -187,7 +190,7 @@ public class DSEController {
             	
             	if (!method.isPublic()) {
             		// but coverage over non-public methods are still tracked
-            		CoverageTracker.getInstance().addTarget(method) ;
+            		//CoverageTracker.getInstance().addTarget(method) ;
             	}
             	
                 continue;
@@ -199,7 +202,7 @@ public class DSEController {
             } else {
                 nonStaticMuts.add(method);
             }
-            CoverageTracker.getInstance().addTarget(method) ;
+            //CoverageTracker.getInstance().addTarget(method) ;
         }
 
         if (staticMuts.isEmpty() && nonStaticMuts.isEmpty()) {
@@ -222,13 +225,27 @@ public class DSEController {
             ctorSoot = analyzer.getSootConstructor(methods, ctor);
             ctorCfg = analyzer.getCFG(ctorSoot);
             initStates = new HashMap<>();
-            CoverageTracker.getInstance().addTarget(ctorSoot) ;
+            //CoverageTracker.getInstance().addTarget(ctorSoot) ;
             logger.info("Using constructor: {}, #stmts:{}", 
             		ctorSoot.getSignature(),
             		ctorSoot.getBody().getStmts().size());
             //System.out.println(">>> " + ctorSoot.getName() + "\n" + ctorSoot.getBody()) ;
         }
-
+        
+        // registering coverage targets:
+        CoverageTracker.getInstance().addTarget(
+        		sootClass,
+        		methodName.equals("all") ? null : methodName,
+        		false // track non-public methods too
+        		) ;
+        // if classToTrack is not null, add that too as coverage
+        // target:
+        if (classToTrack != null) {
+        	JavaSootClass TC = analyzer.getSootClass(analyzer.getClassType(classToTrack));
+        	CoverageTracker.getInstance().addTarget(TC,null,false) ;
+        }
+        
+        
         logger.info("Running {} DSE on class: {}", concreteDriven ? "concrete-driven" : "symbolic-driven",
                 clazz.getSimpleName());
         logger.info("Using search strategy: {}", searchStrategy.getName());
@@ -261,8 +278,8 @@ public class DSEController {
         	int pathCovered = pathTargets 
         			- CoverageTracker.getInstance().numberOfStillUncoveredTargetPaths() 
         			- CoverageTracker.getInstance().numberOfDroppedTargetPaths() ;
-        	logger.info("statement-converage (by test): " + stmtCovered + "/" + stmtTargets) ;
-        	logger.info("branch-converage    (by test): " + branchCovered + "/" + branchTargets
+        	logger.info("statement-coverage (by test): " + stmtCovered + "/" + stmtTargets) ;
+        	logger.info("branch-coverage    (by test): " + branchCovered + "/" + branchTargets
         			+ ", #untargeted-branches covered: " + untargetdBranchCovered) ;
         	if (EngineConfiguration.getInstance().pathLengthCoverage == -1
         			|| EngineConfiguration.getInstance().pathLengthCoverage >= 1)
@@ -271,8 +288,18 @@ public class DSEController {
         				) ;
         	
         	if (generator.getNumberOfViolationFound() > 0) {
-            	logger.info("There were {} test/s that threw an unexpected exception. They may be ERRORs.",  generator.getNumberOfViolationFound()) ;
+        		if (EngineConfiguration.getInstance().verificationMode != 0) {
+                   	logger.info("Verification: there were {} test/s that give ERROR (threw an unexpected exception).",  generator.getNumberOfViolationFound()) ;
+        		}
+        		else {
+                   	logger.info("There were {} test/s that threw an unexpected exception. They may be ERRORs.",  generator.getNumberOfViolationFound()) ;       			
+        		}
             }
+        	else {
+        		if (EngineConfiguration.getInstance().verificationMode != 0) {
+                   	logger.info("Verification: PASS (no violation found") ;
+        		}
+        	}
             
             switch(EngineConfiguration.getInstance().exportPathCovInfo) {
                 case -1 : logger.info("Path-coverage info:\n" + CoverageTracker.getInstance().showPathCoverageInfo()) ;
@@ -450,7 +477,7 @@ public class DSEController {
     }
     
     //int j = 1 ;
-    //int k = 1 ;
+    int k = 1 ;
     
     /**
      * Generate a test case for the given method and symbolic state.
@@ -460,8 +487,9 @@ public class DSEController {
         	//System.out.println("### test " + j) ; j++ ;
         	Optional<ArgMap> argMap = validator.evaluate(state);
             if (argMap.isPresent()) {
-            	//System.out.println("--- test " + k) ; k++ ;
+            	System.out.println("--- test " + k) ; k++ ;
             	//System.out.println(">>> " + state.getMethod().getName()) ;
+            	System.out.println(">>> argMap: " + argMap) ;
             	
             	InstructionHistory history = rerunToGetHistory(state.getMethod(), argMap.get()) ;
             	//InstructionHistory history = new InstructionHistory() ;
@@ -523,7 +551,7 @@ public class DSEController {
             JavaSootMethod targetMethod) {
     	
         SymbolicState current;
-        
+              
         while ((current = searchStrategy.next()) != null) {
         	
             // stop the search if the engine is configured to add only coverage-
@@ -572,13 +600,15 @@ public class DSEController {
                 continue;
             }
             
-            //System.out.println(">>> about to exec: " + current.getStmt()) ;
-            //System.out.println("** STATE: " + current) ;
+            System.out.println(">>> about to exec: " + current.getStmt()) ;
+            System.out.println("** STATE: " + current) ;
             
             // Symbolically execute the statement of the current symbolic state
             List<SymbolicState> newStates = symbolic.step(current, concreteDriven);   
             
-            //System.out.println("** after, #next: " + newStates.size()) ;
+            //System.out.println("** AFTER, #next: " + newStates.size()) ;
+            System.out.println("** AFTER: " + current) ;
+            
             
             // For ctor states, check for final states from which we can switch to the
             // target method(s)

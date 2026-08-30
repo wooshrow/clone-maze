@@ -451,7 +451,7 @@ public class SymbolicExecutor {
             	// We add the default-initialization of the declared fields of C. This default initialization
             	// do not appear as explicit instructions in the bytecode, so we need to add the corresponding
             	// logic:
-            	if (stmt == state.getCFG().getStartingStmt() && state.getMethod().getName().equals("<init>")) {
+            	if (stmt == state.getCFG().getStartingStmt() && state.getMethod().getName().equals("<init>")) {	
             		handleFieldsInitializationAtConstructor(stmt,state) ;
             	}
             	// we don't have to do similar default initialization for locvars, because

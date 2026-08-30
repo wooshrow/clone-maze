@@ -36,9 +36,8 @@ public class CobaMaze {
 		//String CUT = "cobabench.CobaGraphTraversal" ;
 		//String CUT = "cobabench.CobaSimplePaths" ;
 		//String CUT = "cobabench.CobaArithFunctions" ;
-		String CUT = "cobabench.CobaAssert" ;
-		
-		
+		//String CUT = "cobabench.CobaAssert" ;
+		String CUT = "cobabench.CobaCUTObjectConstruction" ;
 		
 		// classes from Maze-bm:
 		//String CUT = "cobabench.mazebm.TriangleClassifier" ;
@@ -75,8 +74,8 @@ public class CobaMaze {
 				      //+ sp + "-s=COS"
 				      //+ sp + "-s=PS" + sp + "-u=DTUH"
 				      //+ sp + "-m=isComplexValidTreeHelper"
-				      //+ sp + "-s=BFS"
-				      + sp + "-s=PCS"
+				      + sp + "-s=BFS"
+				      //+ sp + "-s=PCS"
 				      
 				      
 				      + sp + "--minimalistic-suite=true"
@@ -91,7 +90,7 @@ public class CobaMaze {
 				      //+ sp + "--surpress-regression-oracles=false"
 				      //+ sp + "--propagate-unexpected-exceptions=true"
 				      + sp + "--export-jimple=-1"
-				      + sp + "--export-HCFG=-1"
+				      //+ sp + "--export-HCFG=-1"
 				      //+ sp + "--export-target-paths=-1" 
 				      //+ sp + "--export-pathcov=-1" 		
 				      //+ sp + "--export-summary=true" 	

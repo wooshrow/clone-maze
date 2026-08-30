@@ -34,6 +34,9 @@ public class MazeCLI implements Callable<Integer> {
     @Option(names = { "-n",
             "--classname" }, description = "Fully qualified name of the class to generate tests for", required = true, paramLabel = "<class>")
     private String className;
+    
+    @Option(names = { "--indirectTarget" }, description = "Fully qualified name of the indirectly targeted class whose coverage is to be tracked", paramLabel = "<class>")
+    private String classToTrack;
 
     @Option(names = { "-o",
             "--output-path" }, description = "Output path to write generated test files to", required = true, paramLabel = "<path>")
@@ -95,6 +98,9 @@ public class MazeCLI implements Callable<Integer> {
     @Option(names = { "--target-path-aging"}, description = "Set target path aging before being dropped. If -1 target paths don't age. If -0, CUT size is used as aging param. (default: ${DEFAULT-VALUE})", defaultValue = "-1", paramLabel = "<int>")
     private int targetPathAging;
     
+    @Option(names = { "--allow-CUTfieldschange-by-reflection" }, 
+    		description = "When true will allow MAZE to change the CUT fields using reflection (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
+    private boolean allowCUTfieldschangeByReflection ;
 
     @Option(names = { "--constrain-FP-params-to-normal-numbers" }, description = "When true will constrain the symbolic solver to generate normal numbers for floating-point-like methods parameters (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean constrainFPNumberParametersToNormalNumbers ;
@@ -152,6 +158,7 @@ public class MazeCLI implements Callable<Integer> {
             	// if verification mode is on, propagateUnexpectedExceptions is also set to true:
             	EngineConfiguration.getInstance().propagateUnexpectedExceptions = true ;
             }
+            EngineConfiguration.getInstance().allowCUTfieldschangeByReflection = this.allowCUTfieldschangeByReflection ;
             EngineConfiguration.getInstance().enableDivisionByZeroChecking = this.enableDivisionByZeroChecking ;
             EngineConfiguration.getInstance().minimalisticTestSuite = this.minimalisticTestSuite ;
             EngineConfiguration.getInstance().max_array_size = this.max_array_size ;
@@ -181,7 +188,7 @@ public class MazeCLI implements Callable<Integer> {
             Long start = System.currentTimeMillis();
             DSEController controller = new DSEController(classPath, concreteDriven, strategy,
                     methodName, maxDepth, testTimeout, packageName, junitVersion.isJUnit4());
-            controller.run(className, timeBudget);
+            controller.run(className, classToTrack, timeBudget);
             Long end = System.currentTimeMillis();
             logger.info("Execution time: {} ms", end - start);
             return 0;

@@ -26,6 +26,8 @@ import java.util.Map;
 
 import sootup.core.graph.StmtGraph;
 import sootup.core.jimple.common.stmt.Stmt;
+import sootup.core.model.MethodModifier;
+import sootup.java.core.JavaSootClass;
 import sootup.java.core.JavaSootMethod;
 
 /**
@@ -141,6 +143,7 @@ public class CoverageTracker {
     	var cfg = method.getBody().getStmtGraph() ;
     	var stmts = method.getBody().getStmts() ;
     	targetStmts.addAll(stmts) ;
+    	
     	//System.out.println("    after add #targets=" + targetStmts.size() + ", #open=" + stillOpenTargets.size()) ;
     	
     	// adding branch-targets; we will only incluce branches from branching
@@ -237,6 +240,34 @@ public class CoverageTracker {
         			 break ;
             }
         }
+    }
+    
+    /**
+     * Register coverage targets from the given class. If a method name is given,
+     * only methods with that name will be tracked as coverage targets.
+     * Else all methods declared in the class will be tracked. If the flag
+     * publicOnly is set to true (and specificMethodIfAny is null), then only
+     * public methods declared by the class are tracked.
+     */
+    public void addTarget(JavaSootClass sootclass,
+    		String specificMethodIfAny,
+    		boolean publicOnly
+    		) {
+ 
+    	if (specificMethodIfAny != null) {
+    		Set<JavaSootMethod> methods = sootclass.getMethodsByName(specificMethodIfAny) ;
+    		for (var M : methods) addTarget(M) ;
+    		return  ;
+    	}
+    	// this will get all methods declared by the class?
+    	// TODO: check that
+    	Set<JavaSootMethod> methods = sootclass.getMethods() ;
+    	for (var M : methods) {
+    		if (! publicOnly) addTarget(M) ;
+    		else {
+    			if (M.isPublic()) addTarget(M) ;
+    		}
+    	}
     }
     
     private static String targetPathsToString(List<HCFGPath> paths) {
