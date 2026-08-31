@@ -37,11 +37,12 @@ public class CobaMaze {
 		//String CUT = "cobabench.CobaSimplePaths" ;
 		//String CUT = "cobabench.CobaArithFunctions" ;
 		//String CUT = "cobabench.CobaAssert" ;
-		String CUT = "cobabench.CobaCUTObjectConstruction" ;
+		//String CUT = "cobabench.SomeCUT" ;
+		//String CUT = "cobabench.CobaCUTObjectConstruction" ;
 		
 		// classes from Maze-bm:
 		//String CUT = "cobabench.mazebm.TriangleClassifier" ;
-		//String CUT = "cobabench.mazebm.AckermannPeter" ;
+		String CUT = "cobabench.mazebm.AckermannPeter" ;
 		//String CUT = "cobabench.mazebm.BinarySearch" ;
 		//String CUT = "cobabench.mazebm.BinaryTree" ; // challenge
 		//String CUT = "cobabench.mazebm.BitwiseManipulator" ;
@@ -81,7 +82,7 @@ public class CobaMaze {
 				      + sp + "--minimalistic-suite=true"
 				      + sp + "--path-length-cov=3"
 				      + sp + "--target-path-aging=0"
-				      + sp + "-b=60"
+				      + sp + "-b=30"
 				      //+ sp + "-l=DEBUG" // log level
 				      //+ sp + "--max-depth=100"
 				      + sp + "--max-array-size=10"

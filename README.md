@@ -1,52 +1,105 @@
 # MAZE
 
-MAZE (Multi-strategy Automated Symbolic Execution) is a **dynamic symbolic execution (DSE)** engine to do **automated testing** of Java programs. It can be used to generate test cases, as well as for symbolically verifying assertions. The engine analyzes JVM bytecode and uses a combination of symbolic and concrete execution to explore program paths and generate JUnit 5 (or JUnit 4) test cases that aim to maximize code coverage.
+MAZE (Multi-strategy Automated Symbolic Execution) is a **dynamic symbolic execution (DSE)** engine to do **automated testing** of Java programs. It can generate JUnit 5 (or JUnit 4) test cases and symbolically verify assertions. The engine analyzes JVM bytecode and uses a combination of symbolic and concrete execution to explore program paths and generate test cases that aim to maximize code coverage.
 It supports various search strategies and can handle complex data structures, including arrays and objects.
 Constraint solving is powered by the Z3 theorem prover.
 
+In the default-mode MAZE generates test cases for a target Class Under Test (CUT) or a specific target method. The generated test cases also assert regression oracles. It the _verification-mode_ MAZE can target 'check-methods' that contain assertions. For every program path explored by MAZE, and passes an assertion, the assertion is checked _symbolically_.
+
+
 ### Example
 
-Here is a simple example, of a class named `EX0`, with a single (public) method called `isSorted`:
+Here is a simple example, of a class named `EX0`. Generally, a Java class may contain multiple methods. For simplicity, in this example `EX0` has just a single public method named `isSorted`:
 
 ```java
+package MyPackage;
 class EX0{
    int[] a ;
-   public CUT(int[] a){ this.a = a ; }
+   public EX0(int[] a){ this.a = a ; }
    public int isSorted(){
      for (int k=0; k<a.length-1; k++) if (a[k]>a[k+1]) return k ;      
      return -1 ; }
 }  
 ```
 
-To generate tests for this class we can do:
+##### Generating tests
 
-`> java -jar maze.jar --classpath=somepath/classes ----classname=EX0 --minimalistic-suite=true -s=BFS -b=30`
+To generate tests for the example class we can do:
 
-This will generate a class named `EX0Test.java`, containing JUnit test cases targeting all the public methods of `EX0`. In this example, `EX0` only has one public methods. The given time budget is 30 seconds, and the used search strategies is Breadth First Search (BFS). The generated test cases look like as shown below. Notice that regression oracles are also generated.
+`> java -jar maze.jar --classpath=somepath/classes --classname=MyPackage.EX0 --output-path=somepath/tests --minimalistic-suite=true -s=BFS -b=30`
+
+Note: instead of `maze.jar`, distributed jar may be named `maze-<version>-jar-with-dependencies.jar`.
+
+The above will generate a class named `EX0Test.java`, containing JUnit test cases targeting all the public methods of `EX0`. In this example, `EX0` only has one public methods. The given time budget is 30 seconds, and the used search strategy is Breadth First Search (BFS). If the -s option is removed, the default search strategy is Depth First Search (DFS). MAZE offers various search strategies --see the section _Search Strategies and Heuristics_.
+
+The generated test cases look like as shown below. Notice that regression oracles are also generated.
 
 ```java
-bla bla
+import MyPackage.EX0;
+...
+import org.junit.jupiter.api.Test;
+
+public class EX0Test {
+  @Test
+  public void testIsSorted1() throws Exception {
+    int[] carg0 = null;
+    EX0 cut = new EX0(carg0);
+    // This throws NullPointerException, which is actually unexpected and could be an error:
+    Assertions.assertThrows(NullPointerException.class, () -> cut.isSorted());
+  }
+  ...
+  @Test
+  public void testIsSorted3() throws Exception {
+    int[] carg0 = { 1, 0, 1, 1, 1, 1, 1, 1, 1 };
+    EX0 cut = new EX0(carg0);
+    int retval = cut.isSorted();
+    int expected = 0;
+    Assertions.assertEquals(expected, retval);
+  }
+  @Test
+  public void testIsSorted4() throws Exception {
+    int[] carg0 = { -2147483647, 0 };
+    EX0 cut = new EX0(carg0);
+    int retval = cut.isSorted();
+    int expected = -1;
+    Assertions.assertEquals(expected, retval);
+  }
+}
 ```
 
-We can also use MAXE to verify assertions. To do this we write check-methods, e.g. as shown below, to check that the value returnd by `isSorted()` is always less than the length of the array `a` minus one:
+##### Verification mode
+
+We can also verify assertions with MAZE To do this we write check-methods, e.g. as shown below, to check that the value returned by `isSorted()` is always less than the length of the array `a` minus one:
 
 
 ```java
-class CUT_Check{
-   static check(int[] a){
-     if (a != null) assert new CUT(a).isSorted() < a.length-1 ; }
+package MyPackage ;
+class EX0_Check{
+   public static void check(int[] a){
+     if (a != null) assert new EX0(a).isSorted() < a.length-1 ; }
 }  
 ```
 To verify this we can do:
 
-`> java -jar maze.jar --classpath=somepath/classes ----classname=EX0 --minimalistic-suite=true -s=BFS -b=30 xxxx --verificationMode=1`
+`> java -jar maze.jar --classpath=somepath/classes --classname=MyPackage.EX0_Check --indirectTarget=MyPackage.EX0 --output-path=somepath/tests --minimalistic-suite=true -s=BFS -b=30 --verificationMode=1`
 
-Note that along every inspected program path, assertions are verified symbolically.
+The option `classname` specifies the target class, in this case it is the class containing check-methods. The `indirectTarget` option specifies that actual CUT, so the class `EX0`. The option `verificationMode` enables the verification mode. This will cause the assertions in the the target check-methods to be symbolically verified along every program path that MAZE explores (and pass the assertions).
 
+If an assertion is violated, MAZE will report this, and a JUnit test that exposes the violation will be generated. If no violation is found, MAZE will also report this, though in this case no JUnit test will be generated. In the above example, the assertion is actually _NOT valid_. MAZE would find the violating case and generate a test like shown below, showing that that thing goes wrong when the array `a` is empty.
+
+```java
+public void testCheck11() throws Exception {
+  int[] marg0 = {};
+  // This throws AssertionError, which is unexpected:
+  EX0_Check.check(marg0);
+}
+```
+
+Do keep in mind that MAZE is a _bounded_ verification tool. It operates within various bounding. E.g. you specify what the allowed search budget. So, when it does not report any assertion violation, it does not necessarily mean that the CUT is bug free.
 
 ### Papers
 
-In depth paper about MAZE, including its formal semantics, can be found [here](https://studenttheses.uu.nl/handle/20.500.12932/49026).
+In depth paper about MAZE, including its formal semantics, can be found here: [Kroon, T., _Evaluating Search Strategies in Dynamic Symbolic Execution for Java Test Generation_](https://studenttheses.uu.nl/handle/20.500.12932/49026).
 
 ## ▊▎ Getting Started
 
@@ -82,7 +135,7 @@ Additionally, when run, MAZE needs to load Z3 dynamic libraries. These are the f
 
   * **Linux:** Append your-z3-root/bin to the environment variable `DYLD_LIBRARY_PATH`. If that variable is not defined yet, you can just set it to point to the path e.g. `export DYLD_LIBRARY_PATH=your-z3-root/bin`.
 
-  * **MacOS:** unfortunately MacOS' System Integrity Protocl prevents the DYLD_LIBRARY_PATH to be passed to subprocesses, so the above Linux way does not work for MacOS. I have not found a way to get around this other than by copying z3*.dylib files from Z3 root to MAZE project root.
+  * **MacOS:** unfortunately MacOS' System Integrity Protocol prevents the DYLD_LIBRARY_PATH to be passed to subprocesses, so the above Linux way does not work for MacOS. I have not found a way to get around this other than by copying z3*.dylib files from Z3 root to MAZE project root.
 
 
 ### ● Building the Project
@@ -94,33 +147,34 @@ Clone the repository of MAZE. Go to its project root (local) and build the proje
 ```bash
 git clone https://github.com/ThijnK/maze.git
 cd maze
-mvn clean install
+mvn -DskipTests clean package
 ```
 
-If you just want to build, but do not want to install, do `mvn clean compile`. Built binary will be placed in `./target`.
+This will build MAZE jar files. You can find them in `./target`. The jar named `maze-<version>-jar-with-dependencies.jar` contains MAZE along with all its dependencies. This is the jar you use to run MAZE.
 
 
 ### ● Running MAZE
 
-You can run MAZE using the following Maven command:
+To run MAZE from the command line, use Java, passing to it MAZE's JAR file:
 
 ```bash
-mvn exec:java -Dexec.args="--help"
+java -jar maze.jar --help
 ```
-
 This will display the help message with available options and arguments.
 For an overviiew of the command-line options, see [Command-Line Options](#command-line-options).
 
-Alternatively, you can run the packaged JAR file directly:
-
-```bash
-java -jar target/maze-1.0-jar-with-dependencies.jar --help
-```
+Note: instead of maze.jar, built/distributed jar may be named `maze-<version>-jar-with-dependencies.jar`.
 
 For example, to run the application on a specific Java class located in the `./target/classes` directory using BFS (rather than the default DFS), use the following command:
 
 ```bash
-java -jar target/maze-1.0-jar-with-dependencies.jar --classPath target/classes --className com.example.MyClass --outPath tests --strategy BFS
+java -jar maze.jar --classPath=./target/classes --className=com.example.MyClass ---output-path=tests --strategy=BFS
+```
+
+You can also run MAZE using Maven, using the following Maven command from MAZE project homedir:
+
+```bash
+mvn exec:java -Dexec.args="--help"
 ```
 
 
@@ -296,18 +350,19 @@ The project is organized into the following main packages:
 - `nl.uu.maze.examples`: Example classes for testing and demonstration purposes
 - `nl.uu.maze.benchmarks`: Benchmark classes for evaluating and comparing search strategies
 
-## ▊▎Benchmarking
+## ▊▎Benchmarking Framework
 
-MAZE was benchmarked using the [JUGE](https://github.com/JUnitContest/JUGE) benchmarking framework, which is designed for evaluating test generation tools for the SBFT tool competitions.
-A fork of JUGE that is specifically set up to benchmark MAZE is available [here](https://github.com/ThijnK/JUGE).
-Further instructions and details on the benchmarking process can be found there.
+An accompanying benchmarking framework for MAZE is provided [here](https://github.com/ThijnK/JUGE), which can measure performance in terms of time to generate tests, code coverage, and mutation kill rate. The benchmarking framework can be used to study the performance of MAZE search strategies, also to compare them to other testing tools. Developers implementing new search strategies may want to use this framework. The framework is a fork of the [JUGE](https://github.com/JUnitContest/JUGE) benchmarking framework, which is designed for evaluating test generation tools for the SBFT tool competitions. The fork is specifically set up to benchmark MAZE.
+Further instructions and details on the benchmarking process can be found [there](https://github.com/ThijnK/JUGE).
 
-### ● Benchmark Set
 
-The synthetic benchmark classes used to compare different search strategies are available in the [`nl.uu.maze.benchmarks`](/src/main/java/nl/uu/maze/benchmarks/) package.
+##### MAZE Benchmark Set
+
+The benchmark framework includes a set of 20 CUTs, listed below, that we used to benchmark MAZE. The benchmarking framework itself allows you to add more CUTs as targets.
+
+The source code of these 20 subjects can be inspected  in the [`nl.uu.maze.benchmarks`](/src/main/java/nl/uu/maze/benchmarks/) package (in the benchmarking framework they are put as a jar). They were used to compare different search strategies.
 These classes are designed to test the engine's capabilities and performance across various scenarios.
-
-The benchmark set used in the thesis includes the following 10 classes:
+More information about the reasoning behind the design of each subject can be found in their respective source files.
 
 - [`AckermannPeter`](/src/main/java/nl/uu/maze/benchmarks/AckermannPeter.java): Implementation of the Ackermann-Peter function.
 - [`BinarySearch`](/src/main/java/nl/uu/maze/benchmarks/BinarySearch.java): Implementation of a binary search algorithm on an integer array.
@@ -319,14 +374,6 @@ The benchmark set used in the thesis includes the following 10 classes:
 - [`QuickSort`](/src/main/java/nl/uu/maze/benchmarks/QuickSort.java): Implementation of the quicksort algorithm on an integer array.
 - [`SinglyLinkedList`](/src/main/java/nl/uu/maze/benchmarks/SinglyLinkedList.java): Implements a singly linked list with various operations (e.g., add, delete, etc.).
 - [`TriangleClassifier`](/src/main/java/nl/uu/maze/benchmarks/TriangleClassifier.java): Classifies a triangle based on its sides (e.g., equilateral, isosceles, etc.), with functions for integer, floating-point, and double precision inputs.
-
-More information about the reasoning behind the design of each subject can be found in their respective source files.
-
-### ● Extended Benchmark Set
-
-The set of classes used in the thesis was extended with 10 additional classes for further testing and evaluation, for a total of 20 benchmark classes.
-These classes are likewise available in the [`nl.uu.maze.generated.benchmarks`](/src/main/java/nl/uu/maze/generated/benchmarks/) package, and include:
-
 - [`BinaryTree`](/src/main/java/nl/uu/maze/benchmarks/BinaryTree.java): Provides a binary tree implementation and various traversal and utility methods (e.g., in-order, pre-order, post-order traversal, height calculation, finding certain values).
 - [`BitwiseManipulator`](/src/main/java/nl/uu/maze/benchmarks/BitwiseManipulator.java): Class that performs various bitwise operations on integers.
 - [`BracketBalancer`](/src/main/java/nl/uu/maze/benchmarks/BracketBalancer.java): Class that checks whether a string of brackets (represented as an array of characters) is balanced.
@@ -338,10 +385,11 @@ These classes are likewise available in the [`nl.uu.maze.generated.benchmarks`](
 - [`StringPatternMatcher`](/src/main/java/nl/uu/maze/benchmarks/StringPatternMatcher.java): Implements a simple string pattern matching algorithm based on regex-like syntax.
 - [`StringUtils`](/src/main/java/nl/uu/maze/benchmarks/StringUtils.java): Class that provides various utility methods for strings, such as reversing a string, checking for palindromes, and finding really specific substrings (e.g., alternating digits and letters).
 
-### ● Example Output
 
-The output for each of the benchmark classes when run using **BFS** with a **10 second time budget** is available in the [src/test/java/nl/uu/maze/generated/benchmarks](/src/test/java/nl/uu/tests/maze/generated/benchmarks/) directory.
-These test cases achieve an overall 87% line coverage and 84% branch coverage for the benchmark set (see JaCoCo report after running the tests), but better coverage can be achieved using different search strategies and/or a larger time budget.
+##### Sample of generated tests
+
+Samples of generated tests for the above benchmark classes can be found in [src/test/java/nl/uu/maze/generated/benchmarks](/src/test/java/nl/uu/tests/maze/generated/benchmarks/). These were generated using BFS with 30 second time budget.
+These tests achieve an overall 90% instruction coverage and 85% branch coverage.
 
 ## ▊▎MAZE Architecture
 

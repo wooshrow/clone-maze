@@ -487,9 +487,9 @@ public class DSEController {
         	//System.out.println("### test " + j) ; j++ ;
         	Optional<ArgMap> argMap = validator.evaluate(state);
             if (argMap.isPresent()) {
-            	System.out.println("--- test " + k) ; k++ ;
+            	//System.out.println("--- test " + k) ; k++ ;
             	//System.out.println(">>> " + state.getMethod().getName()) ;
-            	System.out.println(">>> argMap: " + argMap) ;
+            	//System.out.println(">>> argMap: " + argMap) ;
             	
             	InstructionHistory history = rerunToGetHistory(state.getMethod(), argMap.get()) ;
             	//InstructionHistory history = new InstructionHistory() ;
@@ -600,14 +600,14 @@ public class DSEController {
                 continue;
             }
             
-            System.out.println(">>> about to exec: " + current.getStmt()) ;
-            System.out.println("** STATE: " + current) ;
+            //System.out.println(">>> about to exec: " + current.getStmt()) ;
+            //System.out.println("** STATE: " + current) ;
             
             // Symbolically execute the statement of the current symbolic state
             List<SymbolicState> newStates = symbolic.step(current, concreteDriven);   
             
             //System.out.println("** AFTER, #next: " + newStates.size()) ;
-            System.out.println("** AFTER: " + current) ;
+            //System.out.println("** AFTER: " + current) ;
             
             
             // For ctor states, check for final states from which we can switch to the
