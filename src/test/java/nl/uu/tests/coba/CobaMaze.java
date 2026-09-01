@@ -80,11 +80,11 @@ public class CobaMaze {
 				      
 				      
 				      + sp + "--minimalistic-suite=true"
-				      + sp + "--path-length-cov=3"
+				      + sp + "--path-length-cov=1"
 				      + sp + "--target-path-aging=0"
 				      + sp + "-b=30"
 				      //+ sp + "-l=DEBUG" // log level
-				      //+ sp + "--max-depth=100"
+				      + sp + "--max-depth=100"
 				      + sp + "--max-array-size=10"
 				      + sp + "--constrain-FP-params-to-normal-numbers=true"
 				      + sp + "--check-divbyZero=true"

@@ -4,7 +4,7 @@ MAZE (Multi-strategy Automated Symbolic Execution) is a **dynamic symbolic execu
 It supports various search strategies and can handle complex data structures, including arrays and objects.
 Constraint solving is powered by the Z3 theorem prover.
 
-In the default-mode MAZE generates test cases for a target Class Under Test (CUT) or a specific target method. The generated test cases also assert regression oracles. It the _verification-mode_ MAZE can target 'check-methods' that contain assertions. For every program path explored by MAZE, and passes an assertion, the assertion is checked _symbolically_.
+In the default-mode MAZE generates test cases for a target Class Under Test (CUT) or a specific target method. The generated test cases also assert regression oracles. In the _verification-mode_ MAZE can target 'check-methods' that contain assertions. Along every program path explored by MAZE, assertions are checked _symbolically_.
 
 
 ### Example
@@ -30,7 +30,7 @@ To generate tests for the example class we can do:
 
 Note: instead of `maze.jar`, distributed jar may be named `maze-<version>-jar-with-dependencies.jar`.
 
-The above will generate a class named `EX0Test.java`, containing JUnit test cases targeting all the public methods of `EX0`. In this example, `EX0` only has one public methods. The given time budget is 30 seconds, and the used search strategy is Breadth First Search (BFS). If the -s option is removed, the default search strategy is Depth First Search (DFS). MAZE offers various search strategies --see the section _Search Strategies and Heuristics_.
+The above will generate a class named `EX0Test.java`, containing JUnit test cases targeting all the public methods of `EX0`. The given time budget is 30 seconds, and the used search strategy is Breadth First Search (BFS). If the -s option is removed, the default search strategy is Depth First Search (DFS). MAZE offers various search strategies --see the section _Search Strategies and Heuristics_.
 
 The generated test cases look like as shown below. Notice that regression oracles are also generated.
 
@@ -66,10 +66,11 @@ public class EX0Test {
   }
 }
 ```
+Current MAZE implementation targets public methods of the CUT. So, it does not generate tests for private methods, though private methods are indirectly tested if they are invoked by some public methods.
 
 ##### Verification mode
 
-We can also verify assertions with MAZE To do this we write check-methods, e.g. as shown below, to check that the value returned by `isSorted()` is always less than the length of the array `a` minus one:
+We can also verify assertions. To do this we write so-called _check-methods_. An example is shown below, to check that the value returned by `isSorted()` is always less than the length of the array `a` minus one:
 
 
 ```java
@@ -79,13 +80,15 @@ class EX0_Check{
      if (a != null) assert new EX0(a).isSorted() < a.length-1 ; }
 }  
 ```
-To verify this we can do:
+To verify the property we can do:
 
 `> java -jar maze.jar --classpath=somepath/classes --classname=MyPackage.EX0_Check --indirectTarget=MyPackage.EX0 --output-path=somepath/tests --minimalistic-suite=true -s=BFS -b=30 --verificationMode=1`
 
-The option `classname` specifies the target class, in this case it is the class containing check-methods. The `indirectTarget` option specifies that actual CUT, so the class `EX0`. The option `verificationMode` enables the verification mode. This will cause the assertions in the the target check-methods to be symbolically verified along every program path that MAZE explores (and pass the assertions).
+The option `classname` specifies the target class, in this case it is the class containing check-methods. The `indirectTarget` option specifies that actual CUT; so, the class `EX0`. The option `verificationMode` enables the verification mode. This will cause the assertions in the the target check-methods to be symbolically verified along every program path that MAZE explores (and pass the assertions).
 
-If an assertion is violated, MAZE will report this, and a JUnit test that exposes the violation will be generated. If no violation is found, MAZE will also report this, though in this case no JUnit test will be generated. In the above example, the assertion is actually _NOT valid_. MAZE would find the violating case and generate a test like shown below, showing that that thing goes wrong when the array `a` is empty.
+If an assertion is violated, MAZE will report this, and a JUnit test  exposing the violation will be generated. If no violation is found, MAZE will also report this, though in this case no JUnit test will be generated. To be more precise, by virtue of its symbolic execution, even in the default testing mode MAZE also verifies assertions symbolically. The verification-mode differs that it only generates violation-exposing tests and it can target check-methods. In the testing-mode MAZE generates ordinary tests as well as violation-exposing tests, if there are any; the latter are marked with comments.
+
+In the above example, the assertion is actually _NOT valid_. MAZE would find the violating case and generate a test like shown below, showing that that thing goes wrong when the array `a` is empty.
 
 ```java
 public void testCheck11() throws Exception {
@@ -210,7 +213,65 @@ You'll also need some other C++ build tools, which you can install using the Vis
 After building the java bindings, the `build` directory should contain the files needed to run Z3, including the `com.microsoft.z3.jar` file.
 Set the environment variables and install into your local maven repository as described above.
 
-### ● Symbolic Execution Access to Java Standard Library
+
+## ▊▎ MAZE Command-Line Options
+
+| Option              | Alias | Description                                                                | Required | Default     |
+| ------------------- | ----- | -------------------------------------------------------------------------- | -------- | ----------- |
+| `--help`            | `-h`  | Show help message                                                          | No       | -           |
+| `--version`         | `-V`  | Show version information                                                   | No       | -           |
+| `--classpath`       | `-c`  | Path to compiled classes                                                   | Yes      | -           |
+| `--classname`       | `-n`  | Fully qualified name of the class under test (CUT) to generate tests for. In the verification-mode this specifies the name of a class containing check-methods                   | Yes      | -           |
+| `--method-name`     | `-m`  | If specified, the name of the target method to generate tests for                                   | No       | All methods |
+| `--output-path`     | `-o`  | Output path to write generated test files to                               | Yes      | -           |
+| `--verificationMode` |  |  If it is some non-zero, this will turn on the verification-mode. MAZE stops after k violations. If k is -1 it will only stop after the time budget runs out. | No | 0 |
+| `--indirectTarget` |  | In the verification-mode, this specifies the fully qualified name of the actual CUT | No | - |
+| `--minimalistic-suite` |  | If true, only tests that add new coverage are generated. Unless the `--path-length-cov` option is set, this looks at instruction and branch coverage. | No | `false` |
+| `--path-length-cov` |  | If it is some non-zero k, MAZE will track coverage over elementary path of length k. If k is -1, MAZE will track coverage over prime paths. This option refers to paths over high level control flow graphs (CFG) of CUT's methods. | No | 0 |
+| `--package-name`    | `-p`  | Package name to use for generated test files                               | No       | No package  |
+| `--time-budget`     | `-b`  | Time budget for the engine (in seconds)                                    | No       | No budget   |
+| `--strategy`        | `-s`  | One or multiple of the search strategies to use                            | No       | `DFS`       |
+| `--heuristic`       | `-u`  | One or multiple of the search heuristics to use (for probabilistic search) | No       | `Uniform`   |
+| `--weight`          | `-w`  | Weights for the provided heuristics                                        | No       | `1.0`       |
+| `--max-depth`       | `-d`  | Maximum depth of the search                                                | No       | `200`       |
+| `--test-timeout`    | `-t`  | Timeout to apply to generated test cases (in seconds)                      | No       | No timeout  |
+| `--max-array-size` | | Specify the maximum size of arrays generated by MAZE | No | 20 |
+| `--junit-version`   | `-j`  | JUnit version to target for generated test cases (JUnit4, JUnit5)          | No       | `JUnit5`    |
+| `--concrete-driven` | `-C`  | Use concrete-driven DSE instead of symbolic-driven                         | No       | `false`     |
+| `--constrain-FP-params-to-normal-numbers` | | Constrain the symbolic solver to generate normal numbers for floating-point-like methods parameters | No | `false` |
+| `--surpress-regression-oracles` | | Generated regression oracles will be commented out | No | `false` |
+| `--propagate-unexpected-exceptions` | | When a test throws an exception that is not declared as expected exception, it will be propagated | | `false` |
+| `--log-level`       | `-l`  | Log level (OFF, INFO, WARN, ERROR, TRACE, DEBUG)                           | No       | `INFO`      |
+| `--target-path-aging` |  |  If the option `--path-length-cov` is set, this option can be set to some non-negative k. It will cause a target path (to cover) to be deemed as unfeasible (and hence dropped) if it is not covered after k iterations of the symbolic engine. If k=0, the number of instructions in the CUT is used as k. | No | -1 |
+| `--export-jimple` |  | If 1, will export the Jimple code of every target method to a file. If -1 will print it to log.info | No | 0 |
+| `--export-HCFG` |  | If 1, will export the high-level CFG of every target method to a dot-file. If -1 will print it to log info |  No | 0 |
+| `--export-target-paths` |  |  If 1, will export the target paths of every target method to a file. If -1 will print them to log info | No | 0 |
+| `--export-pathcov` |  |  If 1, will export path coverage info to a file. If -1 will print it to log info | No | 0 |
+| `--export-summary` |  | If true, will export basic test statistics to a csv file. |  |  `false` |
+
+## ▊▎MAZE Symbolic Execution
+
+As mentioned, MAZE explores the CUT's program paths. MAZE's engine executes the CUT _symbolically_ from the start, and follows every path through the program simultaneously.
+Once the end of a path is reached, the engine will solve the path constraints and, if the constraints are satisfiable, generate a test case for that path.
+If minimalization is turned on, only program paths that give new coverage will be turned into actual JUnit tests.
+The engine will however use concrete execution for situations where it cannot symbolically execute the program, for example when the program calls a method F(x) whose code is not available (e.g. a library method). The engine will then execute F with a concrete input, and approximate the behavior of the method by observing its return value and side effects, and embedding these into the current symbolic state. Because of this mixing of symbolic and concrete execution, MAZE's approach falls into the category of dynamic symbolic execution (DSE).
+
+The following two modes of DSE is available:
+
+
+- **Symbolic-driven DSE**: this is the default behavior of MAZE engine, and works as described above.
+
+- **Concrete-driven DSE**:
+  The engine instruments the class under test (CUT) in such a way that executing it will record a trace which can be reused to replay that execution symbolically.
+  The engine explores program paths by first executing the instrumented CUT with concrete inputs, and then replays the recorded trace symbolically to obtain the path constraints corresponding to the executed path.
+  By negating constraints from the previous path, and solving the resulting set of constraints, the engine can derive concrete inputs that explore (potentially) new paths.
+  This process continues until no more unexplored paths (up to the maximum depth) are found.
+  In concrete-driven DSE, the search space consists of the branches of previously executed paths.
+
+  This mode is still experimental. It is enabled by the `--concreteDriven` (or `-C`) option.
+
+
+##### Symbolic Execution Access to Java Standard Library
 
 Well, a bit complicated.
 It's possible to give MAZE symbolic execution access to Java standard library classes by adding the path to the `rt.jar` file of your JDK to the classpath.
@@ -221,71 +282,107 @@ However, this does not necessarily lead to better test generation, since the sta
 Therefore, it is generally _not_ recommended to do this.
 By default, the tool will execute standard library classes with concrete inputs.
 
-## ▊▎ MAZE Command-Line Options
-
-MAZE provides the following command-line options:
-
-| Option              | Alias | Description                                                                | Required | Default     |
-| ------------------- | ----- | -------------------------------------------------------------------------- | -------- | ----------- |
-| `--help`            | `-h`  | Show help message                                                          | No       | -           |
-| `--version`         | `-V`  | Show version information                                                   | No       | -           |
-| `--classpath`       | `-c`  | Path to compiled classes                                                   | Yes      | -           |
-| `--classname`       | `-n`  | Fully qualified name of the class to generate tests for                    | Yes      | -           |
-| `--output-path`     | `-o`  | Output path to write generated test files to                               | Yes      | -           |
-| `--method-name`     | `-m`  | Name of the method to generate tests for                                   | No       | All methods |
-| `--package-name`    | `-p`  | Package name to use for generated test files                               | No       | No package  |
-| `--log-level`       | `-l`  | Log level (OFF, INFO, WARN, ERROR, TRACE, DEBUG)                           | No       | `INFO`      |
-| `--strategy`        | `-s`  | One or multiple of the search strategies to use                            | No       | `DFS`       |
-| `--heuristic`       | `-u`  | One or multiple of the search heuristics to use (for probabilistic search) | No       | `Uniform`   |
-| `--weight`          | `-w`  | Weights for the provided heuristics                                        | No       | `1.0`       |
-| `--max-depth`       | `-d`  | Maximum depth of the search                                                | No       | `200`       |
-| `--time-budget`     | `-b`  | Time budget for the engine (in seconds)                                    | No       | No budget   |
-| `--test-timeout`    | `-t`  | Timeout to apply to generated test cases (in seconds)                      | No       | No timeout  |
-| `--junit-version`   | `-j`  | JUnit version to target for generated test cases (JUnit4, JUnit5)          | No       | `JUnit5`    |
-| `--concrete-driven` | `-C`  | Use concrete-driven DSE instead of symbolic-driven                         | No       | `false`     |
-| `--constrain-FP-params-to-normal-numbers` | | Constrain the symbolic solver to generate normal numbers for floating-point-like methods parameters | No | `false` |
-| `--surpress-regression-oracles` | | Generated regression oracles will be commented out | No | `false` |
-| `--propagate-unexpected-exceptions` | | When a test throws an exception that is not declared as expected exception, it will be propagated | | `false` |
 
 ## ▊▎Search Strategies and Heuristics
 
-MAZE generates tests through symbolic executions. It has two modes: symbolic driven (default) and concrete driven (enabled through the `-C` option). Current MAZE implementation targets public methods of the CUT. So, it does not generate tests for private methods, though private methods are indirectly tested if they are invoked by some public methods.
+Even a simple program can generate a huge amount of program paths. A _search strategy_ basically specifies an order with which we explore the paths so that it is more likely that MAZE can explore 'relevant' paths (paths that give new coverage, or expose violations) within the given time budget. MAZE comes with an array of search strategies (and heuristics).
 
-Consider a target class C; for simplicity imagine it only has two public methods, m1(x) and m2(y), and both are static methods. The symbolic driven search starts with the symbolic initial state of m1 and that of m2 placed in a work-list W.
+Consider a target class C; for simplicity imagine it only has two public methods, m1(x) and m2(y), and both are static methods. MAZE exploration starts with the symbolic initial state of m1 and that of m2 placed in a work-list W.
 
-   1. The search proceeds by taking out a symbolic state S from W.
+   1. The search proceeds by taking out one symbolic state S from W.
    1. The program instruction _stmt_ that is enabled on the state S is symbolically executed to yield one or more next symbolic states (you get multiple next states, if _stmt_ was a branching instruction). If S was a state from m1, _stmt_ would also be the current instruction from m1.
    1. If a next state T is 'final': it reaches the end of a method (e.g. of m1), the execution leading to T was a full execution. The path constraints leading to the state (which was tracked during the search) is solved using a backend SMT solver to produce concrete inputs x for m1. This yields a test for m1, namely m1(x). The corresponding JUnit test-method will then be generated, and MAZE will also add regression oracle to the generated test.
    1. The remaining (non-final) next states are added W.
    1. Those steps are repeated until W becomes empty, or execution budget (`-b` option) is exhausted.   This symbolic states exploration is also bounded by a maximum depth specified by the `-d` option.
 
-MAZE defines a _search strategy_ as a policy in selecting which state from the work-list is to be selected next (step-1 above) for exploration. In turn, the affects the order in which execution paths is explored, e.g. in depth first way or in the breadth first way.
+MAZE defines a _search strategy_ as a policy in selecting which state from the work-list is to be selected next (step-1 above) for exploration. Using the `--strategy` option you can set a specific search to use. The default is DFS (depth first search), which would work well for programs without a loop. It may not be the best search strategy for a program with some logic followed by a loop, as DSF will first explore different ways to iterate the loop, before it explores different ways to go through the logic that precedes the loop.
 
-The concrete driven search works one method at a time (whereas the above described symbolic driven search simultaneously targets all methods in the CUT). Imagine it starts with m1. As before we will be working with the work-list W. However, rather than adding symbolic states to W, we will be adding path constraints to W. The concrete driven search starts by generating a concrete input x for m1. Then:
+MAZE supports the following search strategies:
 
-   1. It concretely executes m1(x). The execution is instrumented to construct the symbolic path constraint S passed by the execution. Suppose this constraint is a list P = [c1,c2,c3] that corresponds to three branch conditions, in the order of appearance, encountered during the execution m1(x).
+- **Depth-First Search (DFS)**:
+  Explores paths by going as deep as possible before backtracking.
+  DFS is memory-efficient compared to breadth-first approaches and can quickly find solutions that are deep in the execution tree.
+- **Breadth-First Search (BFS)**:
+  Explores all branches at the current depth before moving deeper.
+  This approach guarantees finding the shortest path to a target state, which can be valuable when looking for minimal test cases or when path length directly impacts solving performance.
+- **Subpath-Guided Search (SGS)**:
+  Tracks frequency of execution subpaths and prioritizes states with rarely seen patterns.
+  This drives exploration toward less-visited code regions.
+  This strategy is inspired by the work of [Li et al.](https://doi.org/10.1145/2544173.2509553).
+- **Random Path Search (RPS)**:
+  Maintains an execution tree and selects paths by randomly walking from root to leaf.
+  Designed specifically for symbolic-driven execution, it naturally favors states closer to the root, keeping path conditions shorter and easier for constraint solvers to handle compared to pure random search.
+  This strategy is inspired by the work of [Cadar et al.](https://www.usenix.org/legacy/events/osdi08/tech/full_papers/cadar/cadar_html/) in their tool KLEE.
+- **Path Covering Search (PCS)**: prioritize symbolic states that would lead to still uncovered elementary path-segment of length k. The k is set by the option `--path-length-cov`, and it refers to paths on the high level control flow graphs (CFGs) of CUT's methods.
+- **Probabilistic Search (PS)**:
+  Selects states based on a weighted probability distribution calculated from one or multiple so-called **search heuristics** (see [Search Heuristics](#search-heuristics) below).
+  By combining multiple heuristics and playing around with their weights, you have the potential to create a wide variety of search strategies.
+  Different heuristics can complement each other, allowing for a more nuanced evaluation of states.
+- **Interleaved Search (IS)**:
+  Alternates between multiple search strategies using a round-robin approach.
+  This can help to prevent any single strategy from getting stuck in unproductive regions of the search space.
+  Note, however, that using multiple search strategies may introduce some overhead, as each strategy will keep track of its own state.
+  When MAZE is instructed to run with multiple search strategies, it will automatically use interleaved search.
 
-   1. If P has been encountered before, we skip forward to step-3. Else, generate m1(x) as a new JUnit test method. Add regression oracle to it. We also add prefixes of P: [c1], [c1,c2], and [c1,c2,c3] to W.
+The engine also provides search strategies obtained from predefined instances of the above mentioned probabilistic search (PS) based on specific heuristics:
 
-   1. We take out a path-constraint p from W. A new path constrain q is constructed by negating the last condition in p (so q corresponds to an execution that follows p, but at the last decision point q takes a different decision). An SMT solver is used to solve q to produce a new concrete input x for m1.
+- **Uniform Random Search (URS)**:
+  this is PS with uniform distribution, effectively creating a random search.
+  This is useful as a baseline or interleaved with other strategies to introduce some randomness.
+- **Coverage Optimized Search (COS)**:
+  Based on KLEE's coverage-optimized search strategy, which is based on the distance to an uncovered instruction, the call stack of the state, and whether it recently covered new code.
+  In MAZE, this is translated to an instance of PS with the `DistanceToUnocvered`, `RecentCoverage`, and `SmallestCallDepth` heuristics.
+  The strategy is designed to maximize code coverage by focusing on unexplored regions of the program.
+- **Feasibility Optimized Search (FOS)**:
+  Strategy designed to prioritize states that are most feasible to solve (in reasonable time).
+  This is achieved by creating an instance of PS using the `QueryCost` and `WaitingTime` as heuristics, the former to prefer states with simpler path constraints and the latter to prefer states that have been waiting in the queue for a long time (similar to a breadth-first search, thus avoiding deep states, which are more likely to be harder to solve and are thus less feasible).
 
-   1. Those steps are repeated until W becomes empty, or execution budget (`-b` option) is exhausted.   
+#### Search Heuristics
 
-Using the `--strategy` option you can set a specific search to use. The default is DFS (depth first search), which would work well for programs without a loop. It may not be the best search strategy for a program with some logic followed by a loop, as DSF will first explore different ways to iterate the loop, before it explores different ways to go through the logic that preceeds the loop. Implemented search strategies (which you can pass as your option for ``--strategy`):
+Search heuristics are used to determine the probability distribution for the probabilistic search (PS) mentioned above.
+MAZE supports the following search heuristics:
+
+  - **Uniform**:
+    Assigns the same weight to every target, effectively creating a random search when used in isolation (no other heuristics).
+    Useful as a baseline or in combination with other heuristics to introduce some randomness.
+  - **Depth**:
+    Assigns weights based on the depth of a target in the control flow graph, allowing a preference for deeper targets (or the opposite, to prefer shallower targets).
+    Less effective for concrete-driven DSE since target depths aren't known at the time of negating a path constraint.
+  - **Call Depth**:
+    Assigns weights based on the call depth of a target, allowing a preference for deeply nested function calls (or the opposite, to prefer states which have not called a function).
+    This may be useful to prevent the search from being dominated by recursive-heavy code, potentially leading to broader coverage of the program because recursion is unlikely to cover new code and is often expensive to solve.
+  - **Distance To Uncovered**:
+    Assigns weights based on how close a state is to reaching uncovered code.
+    Targets that are fewer steps away from uncovered statements receive higher priority, guiding the search toward unexplored regions of the program.
+  - **Recent Coverage**:
+    Prioritizes targets that have recently discovered new code, focusing on "hot" exploration paths.
+    This helps concentrate resources on targets that are actively expanding coverage rather than those that may have stagnated.
+  - **Query Cost**:
+    Favors targets with simpler path constraints that are (expected to be) cheaper to solve.
+    Path constraint cost is estimated based on the complexity of boolean expressions and their argument types (with floating point operations generally more expensive than integer operations, for example).
+    This helps avoid spending excessive time on targets with expensive solver queries.
+  - **Waiting Time**:
+    Assigns weights based on how long a target has been waiting in the queue since being added to the search strategy.
+    The waiting time is based on the iterations, so the number of times the target was not selected for execution in the search strategy.
+    This heuristic can be configured to prefer either long-waiting targets or short-waiting targets, depending on the desired behavior.
+    Preferring long-waiting targets would result in behavior similar to a breadth-first search, while preferring short-waiting targets would result in behavior similar to a depth-first search.
+
+#### Setting strategies and heuristics
+
+Implemented search strategies (which you can pass as your option for ``--strategy`):
 
 * `DepthFirst` or `DFS`: the aforementioned depth first search strategy.
 * `BreadthFirst` or `BFS`: breadth first search strategy.
 * `RandomPath` or `RPS`: random selection strategy.
-* `Probabilistic` or `PS`: probabilistic search strategy, using one or more heuristicss. The heuristics are set using the `--heuristic`. If multiple heuristics are used, their weight are specified using the `--weight`, in the same order. More on this is covered below.
+* `Probabilistic` or `PS`: probabilistic search strategy, using one or more heuristics. The heuristics are set using the `--heuristic`. If multiple heuristics are used, their weight are specified using the `--weight`, in the same order. More on this is covered below.
 * `SubpathGuided` or `SGS`: subpath guided search strategy.
 * `UniformRandom` or `URS`: PS with uniform selection as the heuristic (UH).
-* `CoverageOptimized` or `COS`: PS with three heuristics: DistanceToUncovered, RecentCoverage,xxxx
-
-
-* `FeasibilityOptimized` or `FOS`
+* `CoverageOptimized` or `COS`: PS with three heuristics: DistanceToUncovered, RecentCoverageDensity, and RecentCoverageProximity.
+* `FeasibilityOptimized` or `FOS`: PS with two heuristics: QueryCost and SmallestDepth.
 * `RandomPath` or `RPS`
+* `PCS`: path-covering search.
 
-Available heuristics:
+Available heuristics for `PS`:
 
 * `Uniform` or `UH`
 * `DistanceToUncovered` or `DTUH`
@@ -297,6 +394,22 @@ Available heuristics:
 * `GreatestCallDepth` or `GCDH`
 * `ShortestWaitingTime` or `SWTH`
 * `LongestWaitingTime` or `LWTH`
+
+#### Search strategies for concrete driven DSE
+
+All the above mentioned strategies, except `PCS`, can also ne used when we run MAZE with its concrete-driven DSE mode, though some are more suited for one than the other (e.g., RPS is only really useful for symbolic-driven DSE).
+
+The concrete driven search works one method at a time (whereas the default symbolic driven search simultaneously targets all methods in the CUT). Imagine it starts with m1. As before we will be working with a work-list W. However, rather than adding symbolic states to W, we will be adding path constraints to W. The concrete driven search starts by generating a concrete input x for m1. Then:
+
+   1. It concretely executes m1(x). The execution is instrumented to construct the symbolic path constraint S passed by the execution. Suppose this constraint is a list P = [c1,c2,c3] that corresponds to three branch conditions, in the order of appearance, encountered during the execution m1(x).
+
+   1. If P has been encountered before, we skip forward to step-3. Else, generate m1(x) as a new JUnit test method. Add regression oracle to it. We also add prefixes of P: [c1], [c1,c2], and [c1,c2,c3] to W.
+
+   1. We take out a path-constraint p from W. A new path constrain q is constructed by negating the last condition in p (so q corresponds to an execution that follows p, but at the last decision point q takes a different decision). An SMT solver is used to solve q to produce a new concrete input x for m1.
+
+   1. Those steps are repeated until W becomes empty, or execution budget (`-b` option) is exhausted.  
+
+Similar to the default symbolic driven exploration, a search strategy determines the order with which a search target is popped from the worklist W (in step-1).
 
 ## ▊▎Test Oracles
 
@@ -352,7 +465,7 @@ The project is organized into the following main packages:
 
 ## ▊▎Benchmarking Framework
 
-An accompanying benchmarking framework for MAZE is provided [here](https://github.com/ThijnK/JUGE), which can measure performance in terms of time to generate tests, code coverage, and mutation kill rate. The benchmarking framework can be used to study the performance of MAZE search strategies, also to compare them to other testing tools. Developers implementing new search strategies may want to use this framework. The framework is a fork of the [JUGE](https://github.com/JUnitContest/JUGE) benchmarking framework, which is designed for evaluating test generation tools for the SBFT tool competitions. The fork is specifically set up to benchmark MAZE.
+An accompanying benchmarking framework for MAZE is provided [here](https://github.com/ThijnK/JUGE) to measure performance (e.g. time to generate tests, code coverage, and mutation kill rate). The framework can be used to study the performance of MAZE search strategies, also to compare them to other testing tools. Developers implementing new search strategies may want to use this framework. The framework is a fork of the [JUGE](https://github.com/JUnitContest/JUGE) benchmarking framework, which is designed for evaluating test generation tools for the SBFT tool competitions. The fork is specifically set up to benchmark MAZE.
 Further instructions and details on the benchmarking process can be found [there](https://github.com/ThijnK/JUGE).
 
 
@@ -390,103 +503,6 @@ More information about the reasoning behind the design of each subject can be fo
 
 Samples of generated tests for the above benchmark classes can be found in [src/test/java/nl/uu/maze/generated/benchmarks](/src/test/java/nl/uu/tests/maze/generated/benchmarks/). These were generated using BFS with 30 second time budget.
 These tests achieve an overall 90% instruction coverage and 85% branch coverage.
-
-## ▊▎MAZE Architecture
-
-### ● Dynamic Symbolic Execution (DSE)
-
-Over time, the concept of dynamic symoblic execution (DSE) and concolic execution has evolved, but these terms are often used interchangeably.
-MAZE uses the term DSE to refer to the combination of symbolic and concrete execution.
-We distinguish between two types of DSE, symbolic-driven and concrete-driven:
-
-- **Concrete-driven DSE**:
-  The engine instruments the class under test (CUT) in such a way that executing it will record a trace which can be reused to replay that execution symbolically.
-  The engine explores program paths by first executing the instrumented CUT with concrete inputs, and then replays the recorded trace symbolically to obtain the path constraints corresponding to the executed path.
-  By negating constraints from the previous path, and solving the resulting set of constraints, the engine can derive concrete inputs that explore (potentially) new paths.
-  This process continues until no more unexplored paths (up to the maximum depth) are found.
-  In concrete-driven DSE, the search space consists of the branches of previously executed paths.
-- **Symbolic-driven DSE**:
-  The engine executes the CUT symbolically from the start, and follows every path through the program simultaneously.
-  Once the end of a path is reached, the engine will solve the path constraints and generate a test case for that path.
-  What makes this approach a form of DSE is that the engine will use concrete execution for situations where it cannot symbolically execute the program, for example when the program calls a method whose code is not available (e.g. a library method).
-  The engine will then execute the method with concrete inputs, and approximate the behavior of the method through its return value and side effects.
-  In symbolic-driven DSE, the search space consists of the active symbolic states.
-
-By default, the engine will use symbolic-driven DSE, but you can switch to concrete-driven DSE using the `--concreteDriven` option.
-
-### ● Search Strategies
-
-MAZE supports the following search strategies:
-
-- **Depth-First Search (DFS)**:
-  Explores paths by going as deep as possible before backtracking.
-  DFS is memory-efficient compared to breadth-first approaches and can quickly find solutions that are deep in the execution tree.
-  Well-suited for exploring complex program paths when memory is limited.
-- **Breadth-First Search (BFS)**:
-  Explores all nodes at the current depth before moving deeper.
-  This approach guarantees finding the shortest path to a target state, which can be valuable when looking for minimal test cases or when path length directly impacts solving performance.
-- **Subpath-Guided Search (SGS)**:
-  Tracks frequency of execution subpaths and prioritizes states with rarely seen patterns.
-  This drives exploration toward less-visited code regions.
-  This strategy is inspired by the work of [Li et al.](https://doi.org/10.1145/2544173.2509553).
-- **Random Path Search (RPS)**:
-  Maintains an execution tree and selects paths by randomly walking from root to leaf.
-  Designed specifically for symbolic-driven execution, it naturally favors states closer to the root, keeping path conditions shorter and easier for constraint solvers to handle compared to pure random search.
-  This strategy is inspired by the work of [Cadar et al.](https://www.usenix.org/legacy/events/osdi08/tech/full_papers/cadar/cadar_html/) in their tool KLEE.
-- **Probabilistic Search (PS)**:
-  Selects states based on a weighted probability distribution calculated from one or multiple search heuristics (see [Search Heuristics](#search-heuristics) below).
-  By combining multiple heuristics and playing around with their weights, you have the potential to create a wide variety of search strategies.
-  Different heuristics can complement each other, allowing for a more nuanced evaluation of states.
-- **Interleaved Search (IS)**:
-  Alternates between multiple search strategies using a round-robin approach.
-  This can help to prevent any single strategy from getting stuck in unproductive regions of the search space.
-  Note, however, that using multiple search strategies may introduce some overhead, as each strategy will keep track of its own state.
-  When MAZE is instructed to run with multiple search strategies, it will automatically use interleaved search.
-
-Each of these strategies can be used for both symbolic-driven and concrete-driven DSE, though some are more suited for one than the other (e.g., RPS is only really useful for symbolic-driven DSE).
-
-The engine also provides some predefined search strategies for probabilistic search based on specific heuristics:
-
-- **Uniform Random Search (URS)**:
-  Probabilistic search with uniform distribution, effectively creating a random search.
-  This is useful as a baseline or interleaved with other strategies to introduce some randomness.
-- **Coverage Optimized Search (COS)**:
-  Based on KLEE's coverage-optimized search strategy, which is based on the distance to an uncovered instruction, the call stack of the state, and whether it recently covered new code.
-  In MAZE, this is translated to probabilistic search with the `DistanceToUnocvered`, `RecentCoverage`, and `SmallestCallDepth` heuristics.
-  The strategy is designed to maximize code coverage by focusing on unexplored regions of the program.
-- **Feasibility Optimized Search (FOS)**:
-  Strategy designed to prioritize states that are most feasible to solve (in reasonable time).
-  This is achieved by using the `QueryCost` and `WaitingTime` heuristics, the former to prefer states with simpler path constraints and the latter to prefer states that have been waiting in the queue for a long time (similar to a breadth-first search, thus avoiding deep states, which are more likely to be harder to solve and are thus less feasible).
-
-#### Search Heuristics
-
-Search heuristics are used to determine the probability distribution for probabilistic search.
-MAZE supports the following search heuristics:
-
-- **Uniform**:
-  Assigns the same weight to every target, effectively creating a random search when used in isolation (no other heuristics).
-  Useful as a baseline or in combination with other heuristics to introduce some randomness.
-- **Depth**:
-  Assigns weights based on the depth of a target in the control flow graph, allowing a preference for deeper targets (or the opposite, to prefer shallower targets).
-  Less effective for concrete-driven DSE since target depths aren't known at the time of negating a path constraint.
-- **Call Depth**:
-  Assigns weights based on the call depth of a target, allowing a preference for deeply nested function calls (or the opposite, to prefer states which have not called a function).
-  This may be useful to prevent the search from being dominated by recursive-heavy code, potentially leading to broader coverage of the program because recursion is unlikely to cover new code and is often expensive to solve.
-- **Distance To Uncovered**:
-  Assigns weights based on how close a state is to reaching uncovered code.
-  Targets that are fewer steps away from uncovered statements receive higher priority, guiding the search toward unexplored regions of the program.
-- **Recent Coverage**:
-  Prioritizes targets that have recently discovered new code, focusing on "hot" exploration paths.
-  This helps concentrate resources on targets that are actively expanding coverage rather than those that may have stagnated.
-- **Query Cost**:
-  Favors targets with simpler path constraints that are (expected to be) cheaper to solve.
-  Path constraint cost is estimated based on the complexity of boolean expressions and their argument types (with floating point operations generally more expensive than integer operations, for example).
-  This helps avoid spending excessive time on targets with expensive solver queries.
-- **Waiting Time**:
-  Assigns weights based on how long a target has been waiting in the queue since being added to the search strategy.
-  The waiting time is based on the iterations, so the number of times the target was not selected for execution in the search strategy.
-  This heuristic can be configured to prefer either long-waiting targets or short-waiting targets, depending on the desired behavior.
-  Preferring long-waiting targets would result in behavior similar to a breadth-first search, while preferring short-waiting targets would result in behavior similar to a depth-first search.
 
 ## ▊▎Troubleshooting
 
