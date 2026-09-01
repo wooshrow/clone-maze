@@ -29,6 +29,11 @@ public class SymbolicSearchStrategy extends SearchStrategy<SymbolicState> {
     }
 
     @Override
+    public int getTotalExploredCount() {
+    	return strategy.getTotalExploredCount() ;
+    }
+    
+    @Override
     public void remove(SymbolicState state) {
         strategy.remove(state);
     }
@@ -53,13 +58,9 @@ public class SymbolicSearchStrategy extends SearchStrategy<SymbolicState> {
         return strategy.getAll();
     }
 
-    @Override
-    public boolean requiresCoverageData() {
-        return strategy.requiresCoverageData();
-    }
 
     @Override
-    public boolean requiresBranchHistoryData() {
-        return strategy.requiresBranchHistoryData();
+    public boolean requiresPathTargetingAndTracking() {
+        return strategy.requiresPathTargetingAndTracking();
     }
 }

@@ -24,6 +24,7 @@ public class BFS<T extends SearchTarget> extends SearchStrategy<T> {
     @Override
     public void add(T target) {
         targets.add(target);
+        count++ ;
     }
 
     @Override

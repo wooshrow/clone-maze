@@ -137,6 +137,11 @@ public class ConcreteSearchStrategy extends SearchStrategy<PathConditionCandidat
     public void add(PathConditionCandidate candidate) {
         strategy.add(candidate);
     }
+    
+    @Override
+    public int getTotalExploredCount() {
+    	return strategy.getTotalExploredCount() ;
+    }
 
     @Override
     public void remove(PathConditionCandidate candidate) {
@@ -165,12 +170,7 @@ public class ConcreteSearchStrategy extends SearchStrategy<PathConditionCandidat
     }
 
     @Override
-    public boolean requiresCoverageData() {
-        return strategy.requiresCoverageData();
-    }
-
-    @Override
-    public boolean requiresBranchHistoryData() {
-        return strategy.requiresBranchHistoryData();
+    public boolean requiresPathTargetingAndTracking() {
+        return strategy.requiresPathTargetingAndTracking();
     }
 }

@@ -36,7 +36,7 @@ public class CobaConcreteDriven {
 		//String CUT = "cobabench.mazebm.ConnectedComponents" ;
 		//String CUT = "cobabench.mazebm.ConvergingPaths" ;
 		//String CUT = "cobabench.mazebm.Dijkstra" ;
-		//String CUT = "cobabench.mazebm.ExprEvaluator" ;
+		String CUT = "cobabench.mazebm.ExprEvaluator" ;
 		//String CUT = "cobabench.mazebm.FloatStatistics" ;
 		//String CUT = "cobabench.mazebm.GraphTraversal" ;
 		//String CUT = "cobabench.mazebm.HeapSort" ;
@@ -44,7 +44,7 @@ public class CobaConcreteDriven {
 		//String CUT = "cobabench.mazebm.NestedLoops" ;
 		//String CUT = "cobabench.mazebm.QuickSort" ;
 		//String CUT = "cobabench.mazebm.StringPatternMatcher" ;
-		String CUT = "cobabench.mazebm.SinglyLinkedList" ;
+		//String CUT = "cobabench.mazebm.SinglyLinkedList" ;
 
 		
 		String sp = " " ;
@@ -56,6 +56,7 @@ public class CobaConcreteDriven {
 				      //+ sp + "-s=RPS -u=UH " 
 				      + sp + "-s=BFS"
 				      + sp + "--concrete-driven=true"
+				      + sp + "--random-seeding"
 				      + sp + "-b=60"
 				      //+ sp + "--max-depth=50"
 				      + sp + "--constrain-FP-params-to-normal-numbers=true"

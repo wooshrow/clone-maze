@@ -78,12 +78,14 @@ public class SearchStrategyFactory {
      *                         probabilistic search)
      * @return A search strategy
      */
-    private static <T extends SearchTarget> SearchStrategy<T> createStrategy(String name, List<String> heuristicNames,
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+	private static <T extends SearchTarget> SearchStrategy<T> createStrategy(String name, List<String> heuristicNames,
             List<Double> heuristicWeights) {
         return switch (name) {
             case "DepthFirst", "DepthFirstSearch", "DFS" -> new DFS<>();
             case "BreadthFirst", "BreadthFirstSearch", "BFS" -> new BFS<>();
             case "RandomPath", "RandomPathSearch", "RPS" -> new RandomPathSearch<>();
+            case "PathCoverSearch", "PCS" -> (SearchStrategy<T>) (new PathCoverSearch()) ;
             case "Probabilistic", "ProbabilisticSearch", "PS" -> new ProbabilisticSearch<>(
                     SearchHeuristicFactory.createHeuristics(heuristicNames, heuristicWeights));
             case "SubpathGuided", "SubpathGuidedSearch", "SGS" -> new SubpathGuidedSearch<>();
@@ -117,6 +119,7 @@ public class SearchStrategyFactory {
         DepthFirst, DepthFirstSearch, DFS,
         BreadthFirst, BreadthFirstSearch, BFS,
         Probabilistic, ProbabilisticSearch, PS,
+        PathCoverSearch, PCS,
         SubpathGuided, SubpathGuidedSearch, SGS,
         UniformRandom, UniformRandomSearch, URS,
         CoverageOptimized, CoverageOptimizedSearch, COS,

@@ -5,8 +5,10 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Random;
 
+import nl.uu.maze.execution.EngineConfiguration;
 import nl.uu.maze.search.SearchTarget;
 import nl.uu.maze.search.heuristic.SearchHeuristic;
+import nl.uu.maze.util.HCFG.HCFGPath;
 
 /**
  * Probabilistic Search (PS) strategy.
@@ -18,7 +20,8 @@ import nl.uu.maze.search.heuristic.SearchHeuristic;
  * for a more nuanced evaluation of states.
  */
 public class ProbabilisticSearch<T extends SearchTarget> extends SearchStrategy<T> {
-    private static final Random rand = new Random();
+    
+	private static final Random rand = EngineConfiguration.getInstance().mkNewRandomGenerator() ;
 
     /**
      * Maximum number of targets to select from.
@@ -54,6 +57,7 @@ public class ProbabilisticSearch<T extends SearchTarget> extends SearchStrategy<
     public void add(T target) {
         targets.add(target);
         target.setIteration(iteration);
+        this.count++ ;
     }
 
     @Override
@@ -80,11 +84,6 @@ public class ProbabilisticSearch<T extends SearchTarget> extends SearchStrategy<
     @Override
     public Collection<T> getAll() {
         return targets;
-    }
-
-    @Override
-    public boolean requiresCoverageData() {
-        return heuristics.stream().anyMatch(SearchHeuristic::requiresCoverageData);
     }
 
     /**

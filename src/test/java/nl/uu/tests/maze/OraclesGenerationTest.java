@@ -18,35 +18,13 @@ import nl.uu.maze.analysis.JavaAnalyzer;
 import nl.uu.maze.execution.DSEController;
 import nl.uu.maze.main.cli.MazeCLI;
 import nl.uu.maze.util.Z3ContextProvider;
+import nl.uu.tests.maze.CUTs.CUT_oracleGeneration;
 import picocli.CommandLine;
 
 /**
  * Testing different oracles generation mode of MAZE.
  */
 public class OraclesGenerationTest {
-	
-	public static class CUT_oracleGeneration {
-		
-		public int methodWithNormalTermination(int x) {
-			return x ;
-		}
-		
-		public int methodThrowsExpectException(int x) throws ArithmeticException {
-			x++ ;
-			throw new ArithmeticException("I always throws ArithException.") ;
-		}
-		
-		public int methodThrowsIllegalArgumentExcpetion(int x) {
-			x++ ;
-			throw new IllegalArgumentException("I refuse any x!") ;
-		}
-		
-		public int methodThrowsUnexpectedException(int x) {
-			x++ ;
-			throw new Error("I always throws Error!") ;
-		}
-		
-	}
 	
 	String binClassesDir = Path.of("","target","test-classes").toString() ;
 	String outputDir = Path.of(".","tmp").toString() ;	

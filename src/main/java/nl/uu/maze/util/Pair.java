@@ -59,4 +59,27 @@ public record Pair<First, Second>(First first, Second second) {
                 ", second=" + second +
                 '}';
     }
+    
+    @Override
+    public int hashCode() {
+    	return first.hashCode() + 31 * second.hashCode() ;
+    }
+    
+    @SuppressWarnings("rawtypes")
+	@Override
+    public boolean equals(Object o) {
+    	if (! (o instanceof Pair))
+    		return false ;
+    	Pair o_ = (Pair) o ;
+    	if (first == null && second == null) {
+    		return o_.first == null && o_.second == null ;
+    	}
+    	if (first == null) {
+    		return second.equals(o_.second) ;
+    	}
+    	if (second == null) {
+    		return first.equals(o_.first) ;
+    	}
+    	return first.equals(o_.first) && second.equals(o_.second) ;
+    }
 }

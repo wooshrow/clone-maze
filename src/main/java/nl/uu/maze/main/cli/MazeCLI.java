@@ -34,6 +34,9 @@ public class MazeCLI implements Callable<Integer> {
     @Option(names = { "-n",
             "--classname" }, description = "Fully qualified name of the class to generate tests for", required = true, paramLabel = "<class>")
     private String className;
+    
+    @Option(names = { "--indirectTarget" }, description = "Fully qualified name of the indirectly targeted class whose coverage is to be tracked", paramLabel = "<class>")
+    private String classToTrack;
 
     @Option(names = { "-o",
             "--output-path" }, description = "Output path to write generated test files to", required = true, paramLabel = "<path>")
@@ -83,6 +86,22 @@ public class MazeCLI implements Callable<Integer> {
             "--concrete-driven" }, description = "Use concrete-driven DSE instead of symbolic-driven DSE (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean concreteDriven;
     
+    @Option(names = { "--random-seeding" }, description = "When true: use random values to for unconstrained constructor/method parameters in concrete-driven DSE (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
+    private boolean useRandomSeeding;
+    
+    @Option(names = { "--minimalistic-suite" }, description = "When true: only tests that add new stmt or branch coverage are generated (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
+    private boolean minimalisticTestSuite;
+    
+    @Option(names = { "--path-length-cov" }, description = "If non-zero, the length of elementary paths to cover. If -1, prime paths. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<int>")
+    private int pathLengthCoverage;
+    
+    @Option(names = { "--target-path-aging"}, description = "Set target path aging before being dropped. If -1 target paths don't age. If -0, CUT size is used as aging param. (default: ${DEFAULT-VALUE})", defaultValue = "-1", paramLabel = "<int>")
+    private int targetPathAging;
+    
+    @Option(names = { "--allow-CUTfieldschange-by-reflection" }, 
+    		description = "When true will allow MAZE to change the CUT fields using reflection (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
+    private boolean allowCUTfieldschangeByReflection ;
+
     @Option(names = { "--constrain-FP-params-to-normal-numbers" }, description = "When true will constrain the symbolic solver to generate normal numbers for floating-point-like methods parameters (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean constrainFPNumberParametersToNormalNumbers ;
     
@@ -92,11 +111,34 @@ public class MazeCLI implements Callable<Integer> {
     @Option(names = { "--propagate-unexpected-exceptions" }, description = "When true, when a test throws an exception that is not declared as expected exception by the method under test, it will be propagated. So, it will not be asserted as an expected exception by the test oracle. Note that this means the test will then fail (a potential bug is found by Maze) (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean propagateUnexpectedExceptions ;
     
-    @Option(names = { "--do-not-close-z3-context" }, description = "When true, will not close internal z3 context. Only used for testing MAZE. (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
+    @Option(names = { "--verificationMode" }, description = "if >0, MAZE will stop after finding that number of unexpected exceptions thrown by CUT. Only violating tests are generated. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<int>")
+    private int verificationMode ;
+    
+    @Option(names = { "--do-not-close-z3-context" }, description = "When true, will not close internal z3 context. ONLY USED FOR TESTING MAZE. (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean leaveZ3ContextOpen ;
     
     @Option(names = { "--check-divbyZero" }, description = "When true, MAZE will actively check expressions of the form x/y and x%y, whether a division or remainder by zero error can occur. (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean enableDivisionByZeroChecking ;
+    
+    @Option(names = { "--max-array-size" }, description = "Maximum array size. (default: ${DEFAULT-VALUE})", defaultValue = "20", paramLabel = "<int>")
+    private int max_array_size ;
+    
+    @Option(names = { "--export-jimple" }, description = "If 1, will export the Jimple code of every target method to a file. If -1 will print it to log.info. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<1|-1|0>")
+    private int exportJimple ;
+    
+    @Option(names = { "--export-HCFG" }, description = "If 1, will export the high-level CFG of every target method to a dot-file. If -1 will print it to log info. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<1|-1|0>")
+    private int exportHCFG ;
+    
+    @Option(names = { "--export-target-paths" }, description = "If 1, will export the target paths of every target method to a file. If -1 will print them to log info. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<1|-1|0>")
+    private int exportTargetPaths ;
+    
+    @Option(names = { "--export-pathcov" }, description = "If 1, will export path coverage info to a file. If -1 will print it to log info. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<1|-1|0>")
+    private int exportPathCovInfo ;
+    
+    @Option(names = { "--export-summary" }, description = "If true, will export basic test statistics to a csv file. (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
+    private boolean exportSummary ;
+    
+    
     
     @Override
     public Integer call() {
@@ -107,10 +149,29 @@ public class MazeCLI implements Callable<Integer> {
             
             // first copy options that need to be inspected during DSE runs to a dedicated configuration
             // info (acting like global vars).
+            EngineConfiguration.getInstance().randomSeedingInConcreteDriven = this.useRandomSeeding ;
             EngineConfiguration.getInstance().constrainFPNumberParametersToNormalNumbers = this.constrainFPNumberParametersToNormalNumbers ;
             EngineConfiguration.getInstance().surpressRegressionOracles = this.surpressRegressionOracles ;
             EngineConfiguration.getInstance().propagateUnexpectedExceptions = this.propagateUnexpectedExceptions ;
+            EngineConfiguration.getInstance().verificationMode = this.verificationMode ;
+            if (verificationMode != 0) {
+            	// if verification mode is on, propagateUnexpectedExceptions is also set to true:
+            	EngineConfiguration.getInstance().propagateUnexpectedExceptions = true ;
+            }
+            EngineConfiguration.getInstance().allowCUTfieldschangeByReflection = this.allowCUTfieldschangeByReflection ;
             EngineConfiguration.getInstance().enableDivisionByZeroChecking = this.enableDivisionByZeroChecking ;
+            EngineConfiguration.getInstance().minimalisticTestSuite = this.minimalisticTestSuite ;
+            EngineConfiguration.getInstance().max_array_size = this.max_array_size ;
+            EngineConfiguration.getInstance().pathLengthCoverage = this.pathLengthCoverage ;
+            EngineConfiguration.getInstance().targetPathAging = this.targetPathAging ;
+
+            EngineConfiguration.getInstance().exportJimple = this.exportJimple ;
+            EngineConfiguration.getInstance().exportHCFG = this.exportHCFG ;
+            EngineConfiguration.getInstance().exportTargetPaths = this.exportTargetPaths ;
+            EngineConfiguration.getInstance().exportPathCovInfo = this.exportPathCovInfo ;
+            EngineConfiguration.getInstance().exportSummary = this.exportSummary ;
+
+            EngineConfiguration.getInstance().outPath = this.outPath ;            
             
             // dealing with the rest of the options:
             
@@ -125,9 +186,9 @@ public class MazeCLI implements Callable<Integer> {
                     searchHeuristics, heuristicWeights, timeBudget);
 
             Long start = System.currentTimeMillis();
-            DSEController controller = new DSEController(classPath, concreteDriven, strategy, outPath,
+            DSEController controller = new DSEController(classPath, concreteDriven, strategy,
                     methodName, maxDepth, testTimeout, packageName, junitVersion.isJUnit4());
-            controller.run(className, timeBudget);
+            controller.run(className, classToTrack, timeBudget);
             Long end = System.currentTimeMillis();
             logger.info("Execution time: {} ms", end - start);
             return 0;

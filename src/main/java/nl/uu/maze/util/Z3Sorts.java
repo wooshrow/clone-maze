@@ -5,6 +5,7 @@ import com.microsoft.z3.BitVecSort;
 import com.microsoft.z3.Context;
 import com.microsoft.z3.Expr;
 import com.microsoft.z3.FPSort;
+import com.microsoft.z3.RealSort;
 import com.microsoft.z3.Sort;
 
 import sootup.core.signatures.PackageName;
@@ -29,6 +30,7 @@ public class Z3Sorts {
     private final BitVecSort longSort;
     private final FPSort floatSort;
     private final FPSort doubleSort;
+    private final RealSort realSort ;
 
     private Z3Sorts() {
         refSort = ctx().mkUninterpretedSort("Ref");
@@ -40,6 +42,7 @@ public class Z3Sorts {
         longSort = ctx().mkBitVecSort(getLongBitSize());
         floatSort = ctx().mkFPSort32();
         doubleSort = ctx().mkFPSort64();
+        realSort = ctx().mkRealSort() ;
     }
 
     public static Z3Sorts getInstance() {
@@ -79,6 +82,10 @@ public class Z3Sorts {
 
     public FPSort getDoubleSort() {
         return doubleSort;
+    }
+    
+    public RealSort getRealSort() {
+    	return realSort;
     }
 
     /**
@@ -266,6 +273,9 @@ public class Z3Sorts {
     public Expr<?> getDefaultValue(Type sootType) {
         if (Type.isIntLikeType(sootType)) {
             return ctx().mkBV(0, getBitSize(sootType));
+        } else if (sootType instanceof LongType) {
+        	// WP: adding def. val for long:
+        	return ctx().mkBV(0L, getLongBitSize()) ; 
         } else if (sootType instanceof FloatType) {
             return ctx().mkFP(0.0f, getFloatSort());
         } else if (sootType instanceof DoubleType) {

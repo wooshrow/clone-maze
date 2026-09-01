@@ -18,6 +18,8 @@ import nl.uu.maze.execution.ArgMap.ObjectRef;
 import nl.uu.maze.execution.MethodType;
 import nl.uu.maze.execution.concrete.*;
 import nl.uu.maze.execution.symbolic.HeapObjects.*;
+import nl.uu.maze.model.ArithFunctions;
+import nl.uu.maze.model.BoxedPrimitivesMethods;
 import nl.uu.maze.transform.JavaToZ3Transformer;
 import nl.uu.maze.transform.JimpleToJavaTransformer;
 import nl.uu.maze.transform.JimpleToZ3Transformer;
@@ -30,6 +32,7 @@ import sootup.core.jimple.common.constant.Constant;
 import sootup.core.jimple.common.expr.*;
 import sootup.core.signatures.MethodSignature;
 import sootup.core.types.ClassType;
+import sootup.core.types.PrimitiveType.IntType;
 import sootup.core.types.Type;
 import sootup.core.types.VoidType;
 import sootup.java.core.JavaSootMethod;
@@ -79,13 +82,57 @@ public class MethodInvoker {
         Local base = expr instanceof AbstractInstanceInvokeExpr ? ((AbstractInstanceInvokeExpr) expr).getBase() : null;
         MethodSignature methodSig = expr.getMethodSignature();
 
+        // Handle the case where the called method has a symbolic model. The model will then be
+        // executed instead of the method. 
+        if(BoxedPrimitivesMethods.MODELof_Int_intValue.executeModel(state, base, expr) != null) {
+        	// the execution by the model succeeded, we return empty, as if it was a concrete execution:
+        	return Optional.empty();
+        }
+        if(BoxedPrimitivesMethods.MODELof_Int_valueOf.executeModel(state, base, expr) != null) {
+        	// the execution by the model succeeded, we return empty, as if it was a concrete execution:
+        	return Optional.empty();
+        }
+        if(BoxedPrimitivesMethods.MODELof_Long_longValue.executeModel(state, base, expr) != null) {
+        	return Optional.empty();
+        }
+        if(BoxedPrimitivesMethods.MODELof_Long_valueOf.executeModel(state, base, expr) != null) {
+        	return Optional.empty();
+        }
+        if(BoxedPrimitivesMethods.MODELof_Float_floatValue.executeModel(state, base, expr) != null) {
+        	return Optional.empty();
+        }
+        if(BoxedPrimitivesMethods.MODELof_Float_valueOf.executeModel(state, base, expr) != null) {
+        	return Optional.empty();
+        }
+        if(BoxedPrimitivesMethods.MODELof_Double_doubleValue.executeModel(state, base, expr) != null) {
+        	return Optional.empty();
+        }
+        if(BoxedPrimitivesMethods.MODELof_Double_valueOf.executeModel(state, base, expr) != null) {
+        	return Optional.empty();
+        }
+        if(BoxedPrimitivesMethods.MODELof_Boolean_booleanValue.executeModel(state, base, expr) != null) {
+        	return Optional.empty();
+        }
+        if(BoxedPrimitivesMethods.MODELof_Boolean_valueOf.executeModel(state, base, expr) != null) {
+        	return Optional.empty();
+        }
+        if(ArithFunctions.MODELof_SqRoot.executeModel(state, base, expr) != null) {
+        	return Optional.empty();
+        }
+        // DISABLING these ... expensive to solve:
+        //if(ArithFunctions.MODELof_DoublePow.executeModel(state, base, expr) != null) {
+        	//System.out.println(">>> sym exec Math.pow") ;
+        //	return Optional.empty();
+        //}
+        
+        
         // If replaying a trace, do not symbolically execute java standard library
         // methods, because we do not have trace entries for those (not instrumented)
         if (replay && isStandardLibraryMethod(methodSig)) {
             executeConcrete(state, expr, base, storeResult);
             return Optional.empty();
         }
-
+               
         // For interface invoke expressions, try to resolve the method call to a
         // concrete class
         if (expr instanceof JInterfaceInvokeExpr && base != null && base.getType() instanceof ClassType baseType) {
@@ -111,27 +158,30 @@ public class MethodInvoker {
                 methodSig.getDeclClassType().getFullyQualifiedName().startsWith("javax.");
     }
 
-    /** Execute a method call symbolically. */
+    /** 
+     * Execute a method call symbolically. This means going into the called method, and
+     * executing it symbolically.
+     */
     private Optional<SymbolicState> executeSymbolic(SymbolicState state, JavaSootMethod method, AbstractInvokeExpr expr,
             Local base) {
         // Create a fresh state that will enter the method call
-        SymbolicState callee = new SymbolicState(method, analyzer.getCFG(method));
-        callee.setCaller(state);
+        SymbolicState calleeStartingState = new SymbolicState(method, analyzer.getCFG(method));
+        calleeStartingState.setCaller(state);
         // Also set the constraints to be the same as the caller state
         // This will copy references, so original constraints will be modified if the
         // callee state adds new constraints (intentionally)
-        callee.setConstraints(state.getPathConstraints(), state.getEngineConstraints());
+        calleeStartingState.setConstraints(state.getPathConstraints(), state.getEngineConstraints());
         // Copy the heap counter to avoid interference of constraints added by callee
         // with constraints added by caller after the method call
-        callee.heap.setCounters(state.heap.getHeapCounter(), state.heap.getRefCounter());
-        callee.heap.setResolvedRefs(state.heap.getResolvedRefs());
+        calleeStartingState.heap.setCounters(state.heap.getHeapCounter(), state.heap.getRefCounter());
+        calleeStartingState.heap.setResolvedRefs(state.heap.getResolvedRefs());
 
         // Copy object reference for "this" (if needed)
         if (base != null) {
             Expr<?> symRef = state.lookup(base.getName());
-            callee.assign("this", symRef);
+            calleeStartingState.assign("this", symRef);
             // Link the heap object from caller state to the callee state
-            callee.heap.linkHeapObject(symRef, state.heap);
+            calleeStartingState.heap.linkHeapObject(symRef, state.heap);
         }
 
         // Copy arguments for the method call to the fresh state
@@ -140,26 +190,29 @@ public class MethodInvoker {
             Immediate arg = args.get(i);
             Expr<?> argExpr = jimpleToZ3.transform(arg, state);
             String argName = ArgMap.getSymbolicName(MethodType.CALLEE, i);
-            callee.assign(argName, argExpr);
+            calleeStartingState.assign(argName, argExpr);
             if (state.heap.isMultiArray(arg.toString())) {
                 // If the argument is a multidimensional array, copy the array indices
                 // to the callee state
-                callee.heap.setArrayIndices(argName, state.heap.getArrayIndices(arg.toString()));
+                calleeStartingState.heap.setArrayIndices(argName, state.heap.getArrayIndices(arg.toString()));
             }
 
             // If the argument is a reference, link the heap object from caller state to
             // the callee state
             if (argExpr != null && sorts.isRef(argExpr)) {
-                callee.heap.linkHeapObject(argExpr, state.heap);
+                calleeStartingState.heap.linkHeapObject(argExpr, state.heap);
             }
         }
 
         // Actual execution will be done by {@link DSEController}!
-        return Optional.of(callee);
+        return Optional.of(calleeStartingState);
     }
 
     /** Execute a method call concretely. */
     private void executeConcrete(SymbolicState state, AbstractInvokeExpr expr, Local base, boolean storeResult) {
+    	
+    	//System.out.println(">>> concrete invoke " + expr) ;
+    	
         MethodSignature methodSig = expr.getMethodSignature();
         boolean isCtor = methodSig.getName().equals("<init>");
         Object executable = getExecutable(methodSig, isCtor);
@@ -178,7 +231,7 @@ public class MethodInvoker {
                 state.setExceptionThrown();
                 return;
             }
-
+            
             Optional<ArgMap> argMapOpt = validator.evaluate(state, true);
             if (argMapOpt.isEmpty()) {
                 state.setInfeasible();
@@ -189,6 +242,7 @@ public class MethodInvoker {
             if (!isCtor && base != null) {
                 try {
                     Class<?> clazz = analyzer.getJavaClass(heapObj.getType());
+                    System.out.println(">>> base: " + base.getName()) ;
                     instance = argMap.toJava(base.getName(), clazz);
                     if (instance == null) {
                         throw new UnsupportedOperationException(
@@ -199,6 +253,7 @@ public class MethodInvoker {
                                 ((Method) executable).getParameterTypes());
                     }
                     original = ObjectUtils.shallowCopy(instance, instance.getClass());
+
                     addConcretizationConstraints(state, heapObj, instance, symRef);
                 } catch (ClassNotFoundException | NoSuchMethodException e) {
                     throw new UnsupportedOperationException(

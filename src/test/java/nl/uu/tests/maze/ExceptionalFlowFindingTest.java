@@ -17,8 +17,8 @@ import nl.uu.maze.analysis.JavaAnalyzer;
 import nl.uu.maze.execution.DSEController;
 import nl.uu.maze.main.cli.MazeCLI;
 import nl.uu.maze.util.Z3ContextProvider;
-import nl.uu.tests.maze.FloatNormalAndSpecialValuesGenerationTest.CUT_FloatValuesGeneration;
 import nl.uu.tests.maze.CUTs.CUT_DivisionByZeroReplay;
+import nl.uu.tests.maze.CUTs.CUT_ExceptionalFlowFinding;
 import picocli.CommandLine;
 
 /**
@@ -26,52 +26,6 @@ import picocli.CommandLine;
  * that leads to null-dereference exception being thrown.
  */
 public class ExceptionalFlowFindingTest {
-	
-	static public class CUT_ExceptionalFlowFinding {
-		
-		public int arrayIndexOutOfBound(int k) {
-			int[] a = {0,1,2} ;
-			if (k<a.length) {
-				return a[k] ;
-			}
-			else
-				return -1 ;
-		}
-		
-		public int divByZero(int x, int y) {
-			return x/(y+1) ;
-		}
-
-		public short divByZeroShort(short x, short y) {
-			// short div will internally casted to div on int, we'll check if this
-			// is handled too by MAZE
-			return (short) (x/(y+1)) ;
-		}
-		
-		public long remByZero(long x, long y) {
-			return x/(y+1) ;
-		}
-		
-		public int nullDerefInteger(Integer x) {
-			// Maze has an issue to generate a non-null Integer, possibly
-			// because it calls a wrong constructor Integr(str).
-			// TODO
-			return x+1 ;
-		}
-
-		
-		public int nullDerefString(String x) {
-			// MAZE cannot generate null string
-			// TODO
-			return x.length() ;
-		}
-		
-		public String nullDerefObject(Object x) {
-			return x.toString() ;
-		}
-		
-	}
-	
 	
 	String binClassesDir = "./target/test-classes" ;
 	String outputDir = "./tmp" ;	

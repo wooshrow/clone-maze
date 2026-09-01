@@ -5,16 +5,25 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import nl.uu.maze.analysis.JavaAnalyzer;
 import nl.uu.maze.execution.concrete.ExecutionResult;
 import nl.uu.maze.execution.concrete.ObjectInstantiation;
 import nl.uu.maze.execution.symbolic.SymbolicStateValidator;
 import nl.uu.maze.util.ObjectUtils;
 import nl.uu.maze.util.Z3Sorts;
 import sootup.core.types.ClassType;
+import sootup.core.types.PrimitiveType;
+import sootup.core.types.PrimitiveType.IntType;
+import sootup.core.types.PrimitiveType.LongType;
+import sootup.core.types.PrimitiveType.FloatType;
+import sootup.core.types.PrimitiveType.DoubleType;
+import sootup.core.types.PrimitiveType.BooleanType;
+
 import sootup.core.types.Type;
 
 /**
@@ -103,6 +112,10 @@ public class ArgMap {
         return type.getPrefix() + "arg" + index;
     }
 
+    public Set<String> getArgsNames() {
+    	return args.keySet() ;
+    }
+    
     @Override
     public String toString() {
         return args.toString();
@@ -159,7 +172,7 @@ public class ArgMap {
      * @return The converted object
      */
     public Object toJava(String key, Class<?> type) {
-        return toJava(key, args.get(key), type);
+    	return toJava(key, args.get(key), type);
     }
 
     /**
@@ -169,6 +182,13 @@ public class ArgMap {
      * times.
      */
     private Object toJava(String key, Object value, Class<?> type) {
+    	
+    	//if (value == null) {    		
+    	//   	System.out.println(">>> toJava " + key + ", v=" + value + ", ty=" + type.getSimpleName()) ;   		
+    	//}
+    	//else {
+    	//   	System.out.println(">>> toJava " + key + ", v=" + value + ":" + value.getClass().getSimpleName() + ", ty=" + type.getSimpleName()) ;   		
+    	//}
         // If already defined from resolving a reference, return that
         if (converted.containsKey(key) && !key.equals("temp")) {
             return converted.get(key);
@@ -184,30 +204,90 @@ public class ArgMap {
             // So, create an empty ObjectInstance or array
             Object refValue;
             if (!args.containsKey(var)) {
-                if (type.isArray()) {
+            	if (type == Integer.class) {
+            		Integer v =  2 ;
+            		addBoxedPrimitive_ObjectInstance(var,v,Integer.class,IntType.getInstance()) ;
+            		converted.put(key, v);
+            		return v ;
+            	}
+            	else if (type == Long.class) {
+            		Long v =  2L ;
+            		addBoxedPrimitive_ObjectInstance(var,v,Long.class,LongType.getInstance()) ;
+            		converted.put(key, v);
+            		return v ;
+            	}
+            	else if (type == Float.class) {
+            		Float v =  2f ;
+            		addBoxedPrimitive_ObjectInstance(var,v,Float.class,FloatType.getInstance()) ;
+            		converted.put(key, v);
+            		return v ;
+            	}
+            	else if (type == Double.class) {
+            		Double v =  2d ;
+            		addBoxedPrimitive_ObjectInstance(var,v,Double.class,DoubleType.getInstance()) ;
+            		converted.put(key, v);
+            		return v ;
+            	}
+            	else if (type == Boolean.class) {
+            		Boolean v =  false ;
+            		addBoxedPrimitive_ObjectInstance(var,v,Boolean.class,BooleanType.getInstance()) ;
+            		converted.put(key, v);
+            		return v ;
+            	}
+            	else if (type.isArray()) {
                     Class<?> componentType = type.getComponentType();
                     Object array = Array.newInstance(componentType, 0);
                     converted.put(key, array);
                     return array;
-                } else {
+                } else {;
                     refValue = new ObjectInstance((ClassType) sorts.determineType(type));
                 }
             } else {
-                refValue = args.get(var);
+            	refValue = args.get(var);
             }
-
+            //System.out.println(">>> key:" + key + ", var:" + var + " ty:" + type + ", val:" + refValue) ;
             Object obj = toJava(var, refValue, type);
             converted.put(key, obj);
         } else if (value instanceof ObjectInstance instance) {
-            // Convert ObjectInstance to Object
+        	// Convert ObjectInstance to Object
+        	
+        	// special case.
+            // Classes like Integer and Long appears to have a field called "value" that
+            // holds the primitive number it represents, but it is not a real field in the
+            // sense that we can't set its value with field.set(v).
+            // Handle this differently:
+        	String instTyName = instance.type.getFullyQualifiedName() ;
+        	Class boxedPrimClass = null ;
+        	switch(instTyName) {
+        		case "java.lang.Integer" : boxedPrimClass = Integer.class ; break ;
+        		case "java.lang.Long"    : boxedPrimClass = Long.class    ; break ;
+        		case "java.lang.Float"   : boxedPrimClass = Float.class   ; break ;
+        		case "java.lang.Double"  : boxedPrimClass = Double.class  ; break ;
+        		case "java.lang.Boolean" : boxedPrimClass = Boolean.class ; break ;
+        	}
+        	if (boxedPrimClass != null) {
+        		Object fieldValue = instance.getFields().get("value").getValue() ;
+        		Object convertedValue = toJava(key + "_value", fieldValue, boxedPrimClass);
+                converted.put(key, convertedValue);
+        		return converted.get(key);
+        	}
+        	
             // Create a dummy instance that will be filled with the correct values
-            ExecutionResult result = ObjectInstantiation.createInstance(type);
+        	ExecutionResult result = ObjectInstantiation.createInstance(type);
             if (result.isException()) {
                 logger.error("Failed to create instance of class: {}", type.getName());
                 return null;
             }
+            
             Object obj = result.retval();
-
+        
+           	// non-special cases
+        	
+            // WP: to fix non-termination when trying to covert circular object structure,
+            // we pre-add the obj to the coverted-list, before filling it its fields: 
+            converted.put(key, obj);
+               
+            // now we fill in the fields of obj:
             for (Map.Entry<String, ObjectField> entry : instance.getFields().entrySet()) {
                 try {
                     Field field = ObjectUtils.findField(type, entry.getKey());
@@ -215,11 +295,14 @@ public class ArgMap {
                     Object convertedValue = toJava(key + "_" + entry.getKey(), fieldValue, field.getType());
                     field.set(obj, convertedValue);
                 } catch (Exception e) {
-                    logger.error("Failed to set field: {} in class: {}", entry.getKey(), type.getName());
+                	logger.error("Failed to set field: {} in class: {}", entry.getKey(), type.getName());
                 }
             }
-
-            converted.put(key, obj);
+            // WP change this logic, as this cause non-termination when trying to convert a circular
+            // object structure (e.g. a linked list that is circular).
+            // We now put the obj in the coverted-set before we fill in its field.
+            // See above:
+            // converted.put(key, obj);
         } else if (value.getClass().isArray()) {
             converted.put(key, castArray(value, type));
         } else {
@@ -230,6 +313,21 @@ public class ArgMap {
 
         return converted.get(key);
     }
+    
+    /**
+     * Add an entry to the arg-map, for a var called key, mapping it to a value v of type
+     * boxed-primitive e.g. Integer or Long. This creates an ObjectInstance o, and mas
+     * key to o. This o has a field called "value", that holds v as a primitive e.g. int
+     * (though it will be represented as an Integer v ... i know, a hassle. But the point
+     * is to have key to map to an ObjectInstance wrapping v, and a mapping directly to
+     * v itself).
+     */
+    private void addBoxedPrimitive_ObjectInstance(String key, Object v, Class boxedJavaTy, PrimitiveType primSootTy) {
+    	ObjectInstance o = new ObjectInstance(JavaAnalyzer.getInstance().getClassType(boxedJavaTy.getName())) ;
+		o.setField("value", v, primSootTy);
+		args.put(key,o) ;
+    }
+    
 
     /**
      * Convert an array of Object to an array of the given type.
@@ -346,6 +444,17 @@ public class ArgMap {
 
         public boolean hasField(String name) {
             return fields.containsKey(name);
+        }
+        
+        @Override
+        public String toString() {
+        	String s = "" + type + "-> " ;
+        	for (var x : fields.entrySet()) {
+        		var v = x.getValue().getValue() ;
+        		s += x.getKey() + ":" + v + "/" + v.getClass().getSimpleName() ;
+        		s += ", " ;
+        	}
+        	return s ;
         }
     }
 }

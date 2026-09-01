@@ -21,43 +21,81 @@ public class CobaMaze {
 		//String CUT = "cobabench.CobaUnexpectedExceptionDetection" ;
 		//String CUT = "cobabench.TriangleClassifier3" ;
 		//String CUT = "cobabench.CobaBranches" ;
+		//String CUT = "cobabench.CobaSimple" ;
+		//String CUT = "cobabench.CobaNullDeref" ;
+		//String CUT = "cobabench.CobaVarDefaultInit" ;
+		//String CUT = "cobabench.BinaryTreeY" ;
+		// String CUT = "cobabench.CobaParamOtherClasses" ;
+		//String CUT = "cobabench.RBTY" ;
+		//String CUT = "cobabench.CobbaInnerClasses" ;
+		//String CUT = "cobabench.CobaBinaryTree" ;
+		// String CUT = "cobabench.CobaIntegerParam" ;
+		//String CUT = "cobabench.CobaArrayLength" ;
+		//String CUT = "cobabench.CobaSettingCUTfields" ;
+		//String CUT = "cobabench.CobaExceptionHandlers" ;
+		//String CUT = "cobabench.CobaGraphTraversal" ;
+		//String CUT = "cobabench.CobaSimplePaths" ;
+		//String CUT = "cobabench.CobaArithFunctions" ;
+		//String CUT = "cobabench.CobaAssert" ;
+		//String CUT = "cobabench.SomeCUT" ;
+		//String CUT = "cobabench.CobaCUTObjectConstruction" ;
 		
 		// classes from Maze-bm:
 		//String CUT = "cobabench.mazebm.TriangleClassifier" ;
-		//String CUT = "cobabench.mazebm.AckermannPeter" ;
+		String CUT = "cobabench.mazebm.AckermannPeter" ;
 		//String CUT = "cobabench.mazebm.BinarySearch" ;
-		//String CUT = "cobabench.mazebm.BinaryTree" ;
+		//String CUT = "cobabench.mazebm.BinaryTree" ; // challenge
 		//String CUT = "cobabench.mazebm.BitwiseManipulator" ;
 		//String CUT = "cobabench.mazebm.IntUtils" ;
-		//String CUT = "cobabench.mazebm.StringUtils" ;
-		//String CUT = "cobabench.mazebm.BracketBalancer" ;
+		//String CUT = "cobabench.mazebm.StringUtils" ;// lots of prime paths 3000+ !
+		//String CUT = "cobabench.mazebm.BracketBalancer" ; // 500 pps
 		//String CUT = "cobabench.mazebm.ConnectedComponents" ;		
 		//String CUT = "cobabench.mazebm.ConvergingPaths" ;
-		//String CUT = "cobabench.mazebm.Dijkstra" ;
-		//String CUT = "cobabench.mazebm.ExprEvaluator" ;
+		 //String CUT = "cobabench.mazebm.Dijkstra" ; // challenge
+		//String CUT = "cobabench.mazebm.ExprEvaluator" ; 
 		//String CUT = "cobabench.mazebm.FloatStatistics" ;
 		//String CUT = "cobabench.mazebm.GraphTraversal" ;
 		//String CUT = "cobabench.mazebm.HeapSort" ;
 		//String CUT = "cobabench.mazebm.MatrixAnalyzer" ;
-		//String CUT = "cobabench.mazebm.NestedLoops" ;
-		//String CUT = "cobabench.mazebm.QuickSort" ;
-		//String CUT = "cobabench.mazebm.StringPatternMatcher" ;
-		String CUT = "cobabench.mazebm.SinglyLinkedList" ;
+		//String CUT = "cobabench.mazebm.NestedLoops" ;// 56598 pps???
+		//String CUT = "cobabench.mazebm.QuickSort" ; 
+		//String CUT = "cobabench.mazebm.StringPatternMatcher" ; 
+		//String CUT = "cobabench.mazebm.SinglyLinkedList" ;
 		
-			
+		//String CUT = "cobabench.svcomp.float_nonlinear_calculation.Optimization" ; 
+		
 		String sp = " " ;
 
 		String argz =   "--classpath=" + cobabenchPath + "/target/classes"
 				      + sp + "--classname=" + CUT 
 				      + sp + "--output-path=" + cobabenchPath + "/src/test/java/"
+				      //+ sp + "-C"
 				      // + sp + "-j=JUnit4"
-				      //+ sp + "-s=RPS -u=UH " 
+				      //+ sp + "-s=RPS" 
+				      //+ sp + "-s=COS"
+				      //+ sp + "-s=PS" + sp + "-u=DTUH"
+				      //+ sp + "-m=isComplexValidTreeHelper"
 				      + sp + "-s=BFS"
-				      + sp + "-b=60"
-				      //+ sp + "--max-depth=40"
+				      //+ sp + "-s=PCS"
+				      
+				      
+				      + sp + "--minimalistic-suite=true"
+				      + sp + "--path-length-cov=1"
+				      + sp + "--target-path-aging=0"
+				      + sp + "-b=30"
+				      //+ sp + "-l=DEBUG" // log level
+				      + sp + "--max-depth=100"
+				      + sp + "--max-array-size=10"
 				      + sp + "--constrain-FP-params-to-normal-numbers=true"
+				      + sp + "--check-divbyZero=true"
 				      //+ sp + "--surpress-regression-oracles=false"
 				      //+ sp + "--propagate-unexpected-exceptions=true"
+				      + sp + "--export-jimple=-1"
+				      //+ sp + "--export-HCFG=-1"
+				      //+ sp + "--export-target-paths=-1" 
+				      //+ sp + "--export-pathcov=-1" 		
+				      //+ sp + "--export-summary=true" 	
+				      
 				      + sp
 				      ;
 

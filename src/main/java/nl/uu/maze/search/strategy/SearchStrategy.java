@@ -10,6 +10,12 @@ import nl.uu.maze.search.SearchTarget;
  * Root interface for search strategy hierarchy
  */
 public abstract class SearchStrategy<T extends SearchTarget> {
+	
+	/**
+	 * Keeping track the total number of explored search targets.
+	 */
+	int count = 0 ;
+	
     /**
      * Returns the full name of this search strategy.
      */
@@ -73,6 +79,13 @@ public abstract class SearchStrategy<T extends SearchTarget> {
      * @return The number of targets in the search strategy
      */
     public abstract int size();
+    
+	/**
+	 * Return the total number of search targets explored so far.
+	 */
+    public int getTotalExploredCount() {
+    	return count ;
+    }
 
     /**
      * Reset the search strategy to its initial state.
@@ -84,13 +97,12 @@ public abstract class SearchStrategy<T extends SearchTarget> {
      */
     public abstract Collection<T> getAll();
 
-    /** Whether this search strategy requires data about statement coverage. */
-    public boolean requiresCoverageData() {
-        return false;
-    }
-
-    /** Whether this search strategy requires data about branch history. */
-    public boolean requiresBranchHistoryData() {
+    /** 
+     * Whether this search strategy requires the engine to calculate for
+     * every symbolic state, what is an uncovered target path (e.g. an edge
+     * or an edge-pair) reachable from that state.
+     *  */
+    public boolean requiresPathTargetingAndTracking() {
         return false;
     }
 

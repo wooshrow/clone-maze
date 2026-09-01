@@ -11,17 +11,20 @@ import org.slf4j.LoggerFactory;
 
 import nl.uu.maze.analysis.JavaAnalyzer;
 import nl.uu.maze.execution.ArgMap;
+import nl.uu.maze.execution.EngineConfiguration;
 import nl.uu.maze.execution.MethodType;
 
 /**
  * Instantiates objects using Java reflection and randomly generated
  * arguments.
+ * 
+ * <p>WP NOTE: random generation is disabled for now. The class is heavily
+ * used by sym-exec, in such a way that it should behave deterministically.
  */
 public class ObjectInstantiation {
     private static final Logger logger = LoggerFactory.getLogger(ObjectInstantiation.class);
 
-    private static final Random rand = new Random();
-
+    private static final Random rand = EngineConfiguration.getInstance().mkNewRandomGenerator() ;
     /**
      * Attempt to create an instance of the given class.
      * 
@@ -46,13 +49,26 @@ public class ObjectInstantiation {
                         true);
             }
         }
-
+        
+        // WP for enum:
+        if (clazz.isEnum()) {
+        	Object[] enumconsts = clazz.getEnumConstants() ;
+        	return new ExecutionResult(enumconsts[0], null, false);
+        }
+        // for Boxed of primitives:
+        if (clazz.equals(Integer.class)) {
+        	return new ExecutionResult((Integer) 0, null, false) ;
+        }
+        if (clazz.equals(Long.class)) {
+        	return new ExecutionResult((Long) 0L, null, false) ;
+        }
+        
         // Try to create an instance using one of the constructors
         Constructor<?>[] ctors = clazz.getDeclaredConstructors();
         // Sort the constructors by the number of parameters to try the easiest first
         Arrays.sort(ctors, (a, b) -> Integer.compare(a.getParameterCount(), b.getParameterCount()));
         for (Constructor<?> ctor : ctors) {
-            Object[] args = generateArgs(ctor.getParameters(), MethodType.CTOR, null);
+        	Object[] args = generateArgs(ctor.getParameters(), MethodType.CTOR, null);
             ExecutionResult result = createInstance(ctor, args);
             if (!result.isException()) {
                 return result;
@@ -111,18 +127,33 @@ public class ObjectInstantiation {
      * @return An array of arguments corresponding to the given parameters
      */
     public static Object[] generateArgs(Parameter[] params, MethodType methodType, ArgMap argMap) {
-        Object[] arguments = new Object[params.length];
+    	//System.out.println("--**> generateArgs, argmap: " + argMap) ;
+    	Object[] arguments = new Object[params.length];
         for (int i = 0; i < params.length; i++) {
-            // If the parameter is known, use the known value
-            String name = ArgMap.getSymbolicName(methodType, i);
+        	// If the parameter is known, use the known value
+            String name = ArgMap.getSymbolicName(methodType, i); 
+            //System.out.println("**  arg " + i + ", " + name) ;      
             if (argMap != null && argMap.containsKey(name)) {
-                arguments[i] = argMap.toJava(name, params[i].getType());
+            	arguments[i] = argMap.toJava(name, params[i].getType());
+                //System.out.println("**> arg " + i + ", " + name + ":" + arguments[i] + ", ty:" + params[i].getType()) ;
                 continue;
             }
 
-            // Get a default value for the parameter type
+            // param-i does not appear in the argMap, so it is unconstrained.
+            // Either use a random value, or use a default value depending on the setting:
+            
+            // WP: we should not do this, as this method is also involved in
+            // symbolic execution. So we should keep this deterministic.
+            //if (EngineConfiguration.getInstance().randomSeedingInConcreteDriven) {
+            //	arguments[i] = generateRandom(params[i].getType());
+            //}
+            //else {
+            	// Get a default value for the parameter type
+              //  arguments[i] = getDefault(params[i].getType());
+            //}            
             arguments[i] = getDefault(params[i].getType());
-
+            //System.out.println("****> arg " + i + ", " + name + ":" + arguments[i]) ;
+         
             // Add new argument to argMap
             if (argMap != null) {
                 argMap.set(name, arguments[i]);
@@ -162,7 +193,7 @@ public class ObjectInstantiation {
      * @param type The java class of the value to generate
      * @return A random value or default of the given type
      */
-    @SuppressWarnings("unused")
+    //@SuppressWarnings("unused")
     private static Object generateRandom(Class<?> type) {
         return switch (type.getName()) {
             case "int" -> rand.nextInt(Integer.MIN_VALUE, Integer.MAX_VALUE);

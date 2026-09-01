@@ -190,7 +190,7 @@ public class JavaAnalyzer {
     public Method getJavaMethod(MethodSignature methodSig, Class<?> clazz)
             throws ClassNotFoundException, NoSuchMethodException {
         try {
-            return clazz.getDeclaredMethod(methodSig.getName(), getParameterClasses(methodSig.getParameterTypes()));
+        	return clazz.getDeclaredMethod(methodSig.getName(), getParameterClasses(methodSig.getParameterTypes()));
         } catch (NoSuchMethodException e) {
             // Try to find the method in the super class
             Class<?> superClass = clazz.getSuperclass();

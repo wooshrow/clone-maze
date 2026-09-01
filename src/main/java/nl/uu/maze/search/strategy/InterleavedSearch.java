@@ -57,6 +57,7 @@ public class InterleavedSearch<T extends SearchTarget> extends SearchStrategy<T>
         for (SearchStrategy<T> strategy : strategies) {
             strategy.add(target);
         }
+        this.count ++ ;
     }
 
     @Override
@@ -112,12 +113,7 @@ public class InterleavedSearch<T extends SearchTarget> extends SearchStrategy<T>
     }
 
     @Override
-    public boolean requiresCoverageData() {
-        return strategies.stream().anyMatch(SearchStrategy::requiresCoverageData);
-    }
-
-    @Override
-    public boolean requiresBranchHistoryData() {
-        return strategies.stream().anyMatch(SearchStrategy::requiresBranchHistoryData);
+    public boolean requiresPathTargetingAndTracking() {
+        return strategies.stream().anyMatch(SearchStrategy::requiresPathTargetingAndTracking);
     }
 }

@@ -23,6 +23,7 @@ public class DFS<T extends SearchTarget> extends SearchStrategy<T> {
     @Override
     public void add(T target) {
         targets.push(target);
+        count++ ;
     }
 
     @Override

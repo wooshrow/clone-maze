@@ -1,8 +1,10 @@
 package nl.uu.maze.execution.symbolic;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,7 +17,6 @@ import nl.uu.maze.execution.concrete.ConcreteExecutor;
 import nl.uu.maze.execution.symbolic.PathConstraint.*;
 import nl.uu.maze.instrument.TraceManager;
 import nl.uu.maze.instrument.TraceManager.TraceEntry;
-import nl.uu.maze.main.cli.MazeCLI;
 import nl.uu.maze.transform.JimpleToZ3Transformer;
 import nl.uu.maze.util.*;
 import sootup.core.jimple.basic.*;
@@ -27,6 +28,8 @@ import sootup.core.jimple.common.ref.*;
 import sootup.core.jimple.common.stmt.*;
 import sootup.core.jimple.javabytecode.stmt.JSwitchStmt;
 import sootup.core.types.Type;
+import sootup.java.core.JavaSootClass;
+import sootup.java.core.types.JavaClassType;
 
 /**
  * Provides symbolic execution capabilities.
@@ -34,20 +37,22 @@ import sootup.core.types.Type;
 public class SymbolicExecutor {
     private static final Logger logger = LoggerFactory.getLogger(SymbolicExecutor.class);
     private static final Z3Sorts sorts = Z3Sorts.getInstance();
-    private static final Context ctx() { return Z3ContextProvider.getContext() ; }
-
+    private static final Context ctx() { return Z3ContextProvider.getContext() ; }    
     private final MethodInvoker methodInvoker;
     private final SymbolicStateValidator validator;
     private final JimpleToZ3Transformer jimpleToZ3 = new JimpleToZ3Transformer();
-    private final boolean trackCoverage;
-    private final boolean trackBranchHistory;
-
+    
+    // disabling these; we will always track them:
+    //private final boolean trackCoverage;
+    //private final boolean trackBranchHistory;
+    
+    private JavaAnalyzer analyzer ;
+    
     public SymbolicExecutor(ConcreteExecutor executor, SymbolicStateValidator validator,
-            JavaAnalyzer analyzer, boolean trackCoverage, boolean trackBranchHistory) {
+            JavaAnalyzer analyzer) {
         this.methodInvoker = new MethodInvoker(executor, validator, analyzer);
         this.validator = validator;
-        this.trackCoverage = trackCoverage;
-        this.trackBranchHistory = trackBranchHistory;
+        this.analyzer = analyzer ;
     }
 
     /**
@@ -72,41 +77,80 @@ public class SymbolicExecutor {
         }
 
         try {
-            if (trackCoverage)
-                state.recordCoverage();
+        	
+        	state.recordStmtCoverageByExpl();
+        	state.recordIfNonBranchingNodeHead(stmt);
+        	
+        	List<SymbolicState> nextStates = null ;
+        	
             switch (stmt) {
                 case JIfStmt jIfStmt -> {
-                    return handleIfStmt(jIfStmt, state, replay);
+                	nextStates = handleIfStmt(jIfStmt, state, replay);
+                	break ;
                 }
                 case JSwitchStmt jSwitchStmt -> {
-                    return handleSwitchStmt(jSwitchStmt, state, replay);
+                	nextStates =  handleSwitchStmt(jSwitchStmt, state, replay);
+                	break ;
                 }
                 case AbstractDefinitionStmt abstractDefinitionStmt -> {
-                    return handleDefStmt(abstractDefinitionStmt, state, replay);
+                	nextStates = handleDefStmt(abstractDefinitionStmt, state, replay);
+                	break ;
                 }
                 case JInvokeStmt ignored -> {
-                    return handleInvokeStmt(stmt.getInvokeExpr(), state, replay);
+                	nextStates = handleInvokeStmt(stmt.getInvokeExpr(), state, replay);
+                	break ;
                 }
                 case JThrowStmt ignored -> {
                     state.setExceptionThrown();
-                    return handleOtherStmts(state, replay);
+                    nextStates = handleOtherStmts(state, replay);
+                    break ;
                 }
                 case JReturnStmt jReturnStmt -> {
-                    return handleReturnStmt(jReturnStmt, state, replay);
+                	nextStates = handleReturnStmt(jReturnStmt, state, replay);
+                	break ;
                 }
                 default -> {
-                    return handleOtherStmts(state, replay);
+                	nextStates = handleOtherStmts(state, replay);
+                	break ;
                 }
             }
+            return nextStates ;
         } catch (Exception e) {
             // If an exception is thrown, set the state as exceptional and return it
             // That way, a test case is generated for the path up to this point, even if we
             // didn't finish exploring the path
+        	//System.out.println("### STATE: " + state) ;
             logger.error("Exception thrown during symbolic execution: {}", e.getMessage());
-            logger.debug("Exception stack trace: ", e);
+            logger.error("Exception stack trace: ", e);
             state.setExceptionThrown();
             return List.of(state);
         }
+    }
+    
+    void handleFieldsInitializationAtConstructor(AbstractDefinitionStmt stmt, SymbolicState state) {
+    	try {
+    		JavaClassType classType = analyzer.getClassType(state.getMethod().getDeclaringClassType().getFullyQualifiedName());
+    		JavaSootClass sootClass = analyzer.getSootClass(classType);
+    		var fields = sootClass.getFields() ;
+    		String thisStr = "this" ;
+    		for (var f : fields) {
+    			String fname  = f.getName() ;
+    			Type fty  = f.getType() ;
+    			try {
+    				Expr<?> defaultValue = sorts.getDefaultValue(fty) ;
+    				state.heap.setField(thisStr, fname, defaultValue,fty);
+    				//System.out.println("--> initializing field this." + fname + "/" + fty + "=" + defaultValue) ;
+    			}
+    			catch(Exception e) {
+    				logger.error("Failed to default-initialize field " + fname + " as we enter a constructor of " + sootClass.getName()) ;
+
+    			}
+    		}
+    	}
+    	catch (ClassNotFoundException e) {
+    		logger.error("Class not found: " + state.getMethod().getDeclaringClassType().getFullyQualifiedName()) ;
+    	}
+    	
     }
 
     /**
@@ -139,8 +183,7 @@ public class SymbolicExecutor {
             state.addPathConstraint(branchIndex == 0 ? Z3Utils.negate(cond) : cond);
             state.setStmt(succs.get(branchIndex));
             newStates.add(state);
-            if (trackBranchHistory)
-                state.recordBranch(stmt, branchIndex);
+            state.recordBranch(stmt, branchIndex);
         }
         // Otherwise, follow both branches
         else {
@@ -159,11 +202,10 @@ public class SymbolicExecutor {
             if (validator.isSatisfiable(falseState))
                 newStates.add(falseState);
 
-            if (trackBranchHistory) {
-                // Record the branch taken for both states
-                falseState.recordBranch(stmt, 0);
-                state.recordBranch(stmt, 1);
-            }
+            // Record the branch taken for both states
+            falseState.recordBranch(stmt, 0);
+            state.recordBranch(stmt, 1);
+            
         }
 
         return newStates;
@@ -206,8 +248,7 @@ public class SymbolicExecutor {
             state.addPathConstraint(constraint);
             state.setStmt(succs.get(branchIndex));
             newStates.add(state);
-            if (trackBranchHistory)
-                state.recordBranch(stmt, branchIndex);
+            state.recordBranch(stmt, branchIndex);
         }
         // Otherwise, follow all branches
         else {
@@ -225,8 +266,7 @@ public class SymbolicExecutor {
                 // Prune if not satisfiable
                 if (validator.isSatisfiable(newState)) {
                     newStates.add(newState);
-                    if (trackBranchHistory)
-                        newState.recordBranch(stmt, i);
+                    newState.recordBranch(stmt, i);
                 }
             }
         }
@@ -244,10 +284,11 @@ public class SymbolicExecutor {
      *         statement
      */
     private List<SymbolicState> handleDefStmt(AbstractDefinitionStmt stmt, SymbolicState state, boolean replay) {
-        LValue leftOp = stmt.getLeftOp();
+       
+    	LValue leftOp = stmt.getLeftOp();
         Value rightOp = stmt.getRightOp();
         List<SymbolicState> newStates = new ArrayList<>();
-
+        
         Expr<?> value;
         if (stmt.containsInvokeExpr()) {
             // If this is an invocation, first check if a return value is already available
@@ -275,7 +316,7 @@ public class SymbolicExecutor {
         } else {
             value = jimpleToZ3.transform(rightOp, state, leftOp.toString());
         }
-
+        
         // For array access on symbolic arrays (i.e., parameters), we split the state
         // into one where the index is outside the bounds of the array (throws
         // exception) and one where it is not
@@ -396,17 +437,57 @@ public class SymbolicExecutor {
             case JStaticFieldRef ignored -> {
                 // Static field assignments are considered out of scope
             }
-            case JInstanceFieldRef ref ->
-                state.heap.setField(ref.getBase().getName(), ref.getFieldSignature().getName(), value,
+            case JInstanceFieldRef ref -> {
+            	//System.out.println("----> " + ref.getBase().getName() 
+            	//		+ "/" + ref.getFieldSignature().getName() + "/" + ref.getFieldSignature().getType() + ", val=" + value) ;
+            	state.heap.setField(ref.getBase().getName(), ref.getFieldSignature().getName(), value,
                         ref.getFieldSignature().getType());
-            default -> state.assign(leftOp.toString(), value);
+            }
+            default -> {
+            	// assignment of the form locvar := expr
+            	//System.out.println("-x--> " + leftOp.toString() + ", val=" + value) ;
+            	state.assign(leftOp.toString(), value);
+            	// Special case when the assignment is the first instruction of a constructor of a class C.
+            	// We add the default-initialization of the declared fields of C. This default initialization
+            	// do not appear as explicit instructions in the bytecode, so we need to add the corresponding
+            	// logic:
+            	if (stmt == state.getCFG().getStartingStmt() && state.getMethod().getName().equals("<init>")) {	
+            		handleFieldsInitializationAtConstructor(stmt,state) ;
+            	}
+            	// we don't have to do similar default initialization for locvars, because
+            	// Java compiler rejects locvars without explicit initial values.
+            }
         }
+    	
 
         // Special handling of parameters for reference types when replaying a trace
-        if (replay && rightOp instanceof JParameterRef && sorts.isRef(value)) {
-            SymbolicAliasResolver.resolveAliasForParameter(state, value);
+        //System.out.println("### right-side: " + value + "/ " + rightOp + "/" + rightOp.getClass().getSimpleName() + "/" 
+        //		+ sorts.isRef(value) 
+        //		+ "/ sort " + value.getSort()) ;
+        
+        // WP: this gives an issue when the Param is of type String. 
+        // The instrumenter would generate aliasing trace-entry,
+        // but MAZE treats String as primitive, so it does not do aliasing-based
+        // state-split. In turns this creates a mismatch when interpreting the trace.
+        // Replacing the logic...
+        //if (replay && rightOp instanceof JParameterRef && sorts.isRef(value)) {
+        //	SymbolicAliasResolver.resolveAliasForParameter(state, value);
+        //}
+        //
+        // the new logic:
+        if (replay && rightOp instanceof JParameterRef) {
+        	if (sorts.isRef(value))
+        		SymbolicAliasResolver.resolveAliasForParameter(state, value);
+        	else {
+        		if (Type.isObject(rightOp.getType())){
+        			// for String, which the trace-instrumenter treats as reference,
+            		// so will create an alias-trace entry. BUT, MAZE deals with
+            		// string as a primitive, so we need to throw the trace entry
+            		TraceManager.consumeEntry(state.getMethodSignature());
+        		}	
+        	}	
         }
-
+        
         // Definition statements follow the same control flow as other statements
         newStates.addAll(handleOtherStmts(state, replay));
         return newStates;
@@ -471,24 +552,24 @@ public class SymbolicExecutor {
                 state.setFinalState();
                 return List.of(state);
             }
-            SymbolicState caller = state.returnToCaller();
-
+            SymbolicState callerState = state.returnToCaller();
+            
             // If the caller state is a definition statement, we still need to complete the
             // assignment using the return value of the method that just finished execution
-            if (caller.getStmt() instanceof AbstractDefinitionStmt) {
+            if (callerState.getStmt() instanceof AbstractDefinitionStmt) {
                 Expr<?> returnValue = state.getReturnValue();
-                caller.setReturnValue(returnValue);
+                callerState.setReturnValue(returnValue);
                 if (state.heap.getArrayIndices("return") != null) {
-                    caller.heap.setArrayIndices("return", state.heap.getArrayIndices("return"));
+                    callerState.heap.setArrayIndices("return", state.heap.getArrayIndices("return"));
                 }
                 // If return value is a reference, link the heap object
                 if (returnValue != null && sorts.isRef(returnValue)) {
-                    caller.heap.linkHeapObject(returnValue, state.heap);
+                    callerState.heap.linkHeapObject(returnValue, state.heap);
                 }
-                return handleDefStmt((AbstractDefinitionStmt) caller.getStmt(), caller, replay);
+                return handleDefStmt((AbstractDefinitionStmt) callerState.getStmt(), callerState, replay);
             }
 
-            return handleOtherStmts(caller, replay);
+            return handleOtherStmts(callerState, replay);
         }
 
         // If the state is exceptional, only follow successors that are catch blocks,

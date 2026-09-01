@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import nl.uu.maze.execution.EngineConfiguration;
 import nl.uu.maze.search.SearchTarget;
 import sootup.core.jimple.common.stmt.JIfStmt;
 import sootup.core.jimple.javabytecode.stmt.JSwitchStmt;
@@ -19,11 +20,13 @@ import sootup.core.jimple.javabytecode.stmt.JSwitchStmt;
  * regions.
  */
 public class SubpathGuidedSearch<T extends SearchTarget> extends SearchStrategy<T> {
+	
+	// length 2 over branches would be the same as edge-pair
     private static final int SUBPATH_LENGTH = 2; // Length of the subpath to consider
 
     private final Map<Integer, Integer> subpathCounts = new HashMap<>();
     private final List<T> targets = new ArrayList<>();
-    private final Random random = new Random();
+    private final Random random = EngineConfiguration.getInstance().mkNewRandomGenerator() ;
 
     public String getName() {
         return "SubpathGuidedSearch";
@@ -49,6 +52,7 @@ public class SubpathGuidedSearch<T extends SearchTarget> extends SearchStrategy<
             subpathCounts.put(subpathHash, subpathCounts.getOrDefault(subpathHash, 0) + 1);
         }
         targets.add(target);
+        count++ ;
     }
 
     @Override
@@ -104,8 +108,4 @@ public class SubpathGuidedSearch<T extends SearchTarget> extends SearchStrategy<
         return targets;
     }
 
-    @Override
-    public boolean requiresBranchHistoryData() {
-        return true;
-    }
 }

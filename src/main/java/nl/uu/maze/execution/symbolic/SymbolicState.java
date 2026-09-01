@@ -3,22 +3,32 @@ package nl.uu.maze.execution.symbolic;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.stream.Stream;
 
 import com.microsoft.z3.*;
 
 import nl.uu.maze.analysis.JavaAnalyzer;
+import nl.uu.maze.execution.EngineConfiguration;
 import nl.uu.maze.execution.MethodType;
+import nl.uu.maze.util.BranchStmtUtil;
+import nl.uu.maze.util.HCFG;
+import nl.uu.maze.util.HCFG.HCFGPath;
 import nl.uu.maze.util.Pair;
 import nl.uu.maze.util.Z3ContextProvider;
 import nl.uu.maze.util.Z3Sorts;
 import nl.uu.maze.execution.symbolic.PathConstraint.SingleConstraint;
+import nl.uu.maze.execution.symbolic.TargetPath.TargetPathStatus;
 import nl.uu.maze.search.SearchTarget;
 import sootup.core.graph.StmtGraph;
 import sootup.core.jimple.basic.Immediate;
 import sootup.core.jimple.common.expr.AbstractInstanceInvokeExpr;
 import sootup.core.jimple.common.expr.AbstractInvokeExpr;
+import sootup.core.jimple.common.stmt.JAssignStmt;
+import sootup.core.jimple.common.stmt.JReturnStmt;
+import sootup.core.jimple.common.stmt.JReturnVoidStmt;
+import sootup.core.jimple.common.stmt.JThrowStmt;
 import sootup.core.jimple.common.stmt.Stmt;
 import sootup.core.signatures.MethodSignature;
 import sootup.core.types.Type;
@@ -51,7 +61,7 @@ public class SymbolicState implements SearchTarget {
     private Stmt prevStmt = null;
     private int depth = 0;
     private MethodType methodType = MethodType.CTOR;
-
+    
     /** Mapping from variable names to symbolic expressions. */
     public final Map<String, Expr<?>> store;
     /** Symbolic heap to store symbolic objects and arrays. */
@@ -81,12 +91,29 @@ public class SymbolicState implements SearchTarget {
      * strategies.
      */
     private final List<Integer> newCoverageDepths;
+    
     /**
      * Track the branch history: which branches (encoded by hashing the branching
      * statement and the index of the branch that was taken) were taken along the
      * path leading to this state.
      */
     private final List<Integer> branchHistory;
+    
+    /**
+     * Track the branch histories of methods invoked by the method associated
+     * with this state.
+     */
+    private List<Pair<HCFG,List<Integer>>> indirectBranchHistories;
+    
+    
+    /**
+     * If set (not null), this is a target path that the execution leading to this symbolic
+     * state was set to as a goal to cover. The path is expressed in terms of a
+     * sequence of edges over the high-level CFG of the method to which this state belongs
+     * to.
+     */
+    private TargetPath targetpath = null ;
+    
     /**
      * The iteration at which this state was added to the search strategy.
      */
@@ -120,7 +147,8 @@ public class SymbolicState implements SearchTarget {
         this.engineConstraints = new ArrayList<>();
         this.paramTypes = new HashMap<>();
         this.newCoverageDepths = new ArrayList<>();
-        this.branchHistory = new ArrayList<>();
+        this.branchHistory = new ArrayList<>() ;
+        this.indirectBranchHistories = new LinkedList<>() ;
     }
 
     /*
@@ -146,12 +174,16 @@ public class SymbolicState implements SearchTarget {
         // original here
         this.caller = state.caller;
         this.newCoverageDepths = new ArrayList<>(state.newCoverageDepths);
-        this.branchHistory = new ArrayList<>(state.branchHistory);
+        this.branchHistory = new ArrayList<>(state.branchHistory) ;
+        this.indirectBranchHistories = new LinkedList<>(state.indirectBranchHistories) ;
 
         this.isCtorState = state.isCtorState;
         this.isFinalState = state.isFinalState;
         this.exceptionThrown = state.exceptionThrown;
         this.isInfeasible = state.isInfeasible;
+        if (state.targetpath != null) {
+        	targetpath = new TargetPath(state.targetpath) ;
+        }
     }
 
     public boolean isCtorState() {
@@ -176,7 +208,7 @@ public class SymbolicState implements SearchTarget {
     public int getDepth() {
         return depth;
     }
-
+    
     public int incrementDepth() {
         return ++depth;
     }
@@ -203,7 +235,7 @@ public class SymbolicState implements SearchTarget {
     public MethodSignature getMethodSignature() {
         return method.getSignature();
     }
-
+    
     public void setCaller(SymbolicState caller) {
         this.isCtorState = false;
         this.caller = caller;
@@ -229,6 +261,19 @@ public class SymbolicState implements SearchTarget {
 
         return callStack;
     }
+    
+    /**
+     * Add the branch history and indirect branch histories of S, into the indirect
+     * branch-hist of this State.
+     */
+    public void addIndirectBranchHistories(SymbolicState S) {
+    	// adding the branch-histories of this state to the caller state:
+        this.indirectBranchHistories.addAll(S.indirectBranchHistories) ;
+        HCFG hcfg = CoverageTracker.getInstance().getHCFG(S.method) ;
+        if (hcfg != null) {
+        	this.indirectBranchHistories.add(new Pair<>(hcfg, S.branchHistory)) ;
+        }
+    }
 
     /**
      * Return execution to the caller state by transferring return value and changes
@@ -238,30 +283,33 @@ public class SymbolicState implements SearchTarget {
         if (caller == null) {
             return this;
         }
-        SymbolicState caller = this.caller.clone();
+        SymbolicState callerState = this.caller.clone();
 
         // Link relevant parts of the heap from the callee state to the caller state
         // This is necessary to ensure that newly created objects in the callee's state
         // that are referenced by the caller's state are linked correctly
-        caller.setConstraints(pathConstraints, engineConstraints);
-        caller.heap.setCounters(heap.getHeapCounter(), heap.getRefCounter());
-        caller.heap.setResolvedRefs(heap.getResolvedRefs());
+        callerState.setConstraints(pathConstraints, engineConstraints);
+        callerState.heap.setCounters(heap.getHeapCounter(), heap.getRefCounter());
+        callerState.heap.setResolvedRefs(heap.getResolvedRefs());
         // Last statement in the callee state always contains an invoke (possibly as
         // part of a definition statement)
-        AbstractInvokeExpr expr = caller.getStmt().getInvokeExpr();
+        AbstractInvokeExpr expr = callerState.getStmt().getInvokeExpr();
         if (expr instanceof AbstractInstanceInvokeExpr) {
-            caller.heap.linkHeapObject(caller.lookup(((AbstractInstanceInvokeExpr) expr).getBase().getName()), heap);
+            callerState.heap.linkHeapObject(callerState.lookup(((AbstractInstanceInvokeExpr) expr).getBase().getName()), heap);
         }
 
         // Link heap objects for arguments of the method call
         for (Immediate arg : expr.getArgs()) {
-            Expr<?> argExpr = caller.lookup(arg.toString());
+            Expr<?> argExpr = callerState.lookup(arg.toString());
             if (argExpr != null && Z3Sorts.getInstance().isRef(argExpr)) {
-                caller.heap.linkHeapObject(argExpr, heap);
+                callerState.heap.linkHeapObject(argExpr, heap);
             }
         }
-
-        return caller;
+        
+        // adding the branch-histories of this state to the caller state:
+        callerState.addIndirectBranchHistories(this);
+ 
+        return callerState;
     }
 
     /**
@@ -360,17 +408,29 @@ public class SymbolicState implements SearchTarget {
     /**
      * Record the coverage of the current statement in the coverage tracker.
      * If new coverage is found, add the current depth to the list of new coverage
-     * depths.
+     * depths. This is used to record exploration-time stmt-coverage.
      */
-    public void recordCoverage() {
+    public void recordStmtCoverageByExpl() {
         if (!exceptionThrown) {
-            boolean newCoverage = coverageTracker.setCovered(stmt);
+            boolean newCoverage = coverageTracker.registerStmtCovered_byExpl(this,stmt);
             if (newCoverage) {
                 newCoverageDepths.add(depth);
             }
         }
     }
-
+    
+           
+    /**
+     * Record the stmt into the branch history of this state, if it is the head
+     * stmt of a HCFG node of this.method. Only record it if the node is non-branching.
+     */
+    public void recordIfNonBranchingNodeHead(Stmt stmt) {
+    	var hcfg = coverageTracker.getHCFG(method) ;
+    	if (hcfg != null && hcfg.isHeadOfNonBranchingNode(stmt)) {
+    		branchHistory.add(BranchStmtUtil.getBranchHash(stmt,-1)) ;
+    	}
+    }
+    
     /**
      * Record a branch taken.
      * This is used for branch history tracking.
@@ -378,24 +438,47 @@ public class SymbolicState implements SearchTarget {
      * branch taken.
      */
     public void recordBranch(Stmt branchStmt, int branchIndex) {
-        int hash = branchStmt.hashCode() + 31 * branchIndex;
-        branchHistory.add(hash);
+        branchHistory.add(BranchStmtUtil.getBranchHash(branchStmt, branchIndex) ); 
     }
 
     public List<Integer> getNewCoverageDepths() {
         return newCoverageDepths;
     }
 
+    /**
+     * Get the history of passed branches, leading to this state. Each branch is
+     * represented by its hash value. This only contain the history of the passed 
+     * branches of the method m associated with this state. In particular, branches
+     * over other methods called by m is not included in this history. 
+     * 
+     */
     public List<Integer> getBranchHistory() {
-        return branchHistory;
+        return this.branchHistory ;
+    }
+    
+    /**
+     * Get the branch histories of methods invoked by the method associated
+     * with this state.
+     */
+    public  List<Pair<HCFG,List<Integer>>> getIndirectBranchHistories() {
+    	return this.indirectBranchHistories ;
+    }
+    
+    public TargetPath getTargetPath() {
+    	return this.targetpath ;
+    }
+    
+    public TargetPath setTargetPath(TargetPath sigma) {
+    	return this.targetpath = sigma ;
+    }
+    
+
+    public int getIteration() {
+        return iteration;
     }
 
     public void setIteration(int iteration) {
         this.iteration = iteration;
-    }
-
-    public int getIteration() {
-        return iteration;
     }
 
     public void setWaitingTime(int waitingTime) {

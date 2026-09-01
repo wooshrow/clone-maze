@@ -132,7 +132,7 @@ public class JUnitTestGenerator {
      *               method invocation
      */
     public void addMethodTestCase(JavaSootMethod method, JavaSootMethod ctor, ArgMap argMap) {
-        if (classBuilder == null) {
+    	if (classBuilder == null) {
             throw new IllegalStateException("Test class not initialized. Call initializeForClass() first.");
         }
         builtObjects.clear();
@@ -152,7 +152,6 @@ public class JUnitTestGenerator {
             // behavior if a previous method invocation with the same values modified the
             // state of those values
             argMap.resetConverted();
-
             Constructor<?> _ctor = ctor != null ? analyzer.getJavaConstructor(ctor, clazz) : null;
             ctorArgs = _ctor != null
                     ? ObjectInstantiation.generateArgs(_ctor.getParameters(), MethodType.CTOR, argMap)
@@ -164,25 +163,36 @@ public class JUnitTestGenerator {
                 Method _method = analyzer.getJavaMethod(method.getSignature(), clazz);
                 args = ObjectInstantiation.generateArgs(_method.getParameters(), MethodType.METHOD, argMap);
                 result = executor.execute(_ctor, _method, ctorArgs, args);
+                
             }
         } catch (Exception e) {
             logger.warn("Failed to execute test case for {}", method.getName());
             return;
         }
-        boolean isVoid = method.getReturnType().toString().equals("void");
+        //System.out.println(">>> JunitTestGen, argmap=" + argMap) ;
+        //System.out.println(">>> JunitTestGen, args[0]=" + args[0] + ", result: " + result) ;
         
+        
+        boolean isVoid = method.getReturnType().toString().equals("void");
+        boolean violationDetected = false ;
         if (result.isException()
         	&& ((forCtor || result.thrownByCtor()) ?
         		  ! isExpectdedException(result.getTargetExceptionClass(), ctor) :
         		  ! isExpectdedException(result.getTargetExceptionClass(), method))) {
         	// violation, unexpected exception
-        	this.countNumberOfViolationFound ++ ;
+        	violationDetected = true ;
         	logger.warn("a test for " + method.getName() + "(..,) throws an unexpected exception.");
         }
-        				
+        
+        if (EngineConfiguration.getInstance().verificationMode != 0
+        		&& ! violationDetected
+        		) {
+        	// if verification-mode is on, and the test does not yield
+        	// a violation, we won't generate it.
+        	return ;
+        }
         	
-        	
-
+           	
         AnnotationSpec.Builder testAnnotation = AnnotationSpec
                 .builder(targetJUnit4 ? org.junit.Test.class : Test.class);
         
@@ -207,7 +217,7 @@ public class JUnitTestGenerator {
         	if (isExpectedException || 
         			(!EngineConfiguration.getInstance().surpressRegressionOracles 
         					&& ! EngineConfiguration.getInstance().propagateUnexpectedExceptions)) {
-        		//System.out.println(">>>>  adding test annotagion") ;
+        		//System.out.println(">>>>  adding test annotation") ;
         		testAnnotation.addMember("expected", "$T.class", result.getTargetExceptionClass());        
         	}
         	else {
@@ -217,8 +227,8 @@ public class JUnitTestGenerator {
         
         methodBuilder.addAnnotation(testAnnotation.build()) ;   
         
-        Class<?> returnType = analyzer.tryGetJavaClass(method.getReturnType()).orElse(Object.class);
-
+        Class<?> returnType = analyzer.tryGetJavaClass(method.getReturnType()).orElse(Object.class);  
+        
         // For static methods, just call the method without an instance
         if (method.isStatic()) {
             List<String> params = addParamDefinitions(methodBuilder, method.getParameterTypes(), argMap,
@@ -296,7 +306,7 @@ public class JUnitTestGenerator {
             			AssertClass) ;
             } else {
                 // Check if return value is a reference to an input parameter
-                boolean isReference = false;
+                boolean isReferenceToInputParam = false;
                 boolean isPrimitive = isPrimitive(retval);
                 boolean isArray = retval.getClass().isArray();
                 // Only relevant for non-primitive values (and we handle arrays differently)
@@ -304,7 +314,7 @@ public class JUnitTestGenerator {
                     if (ctorArgs != null) {
                         for (int i = 0; i < ctorArgs.length; i++) {
                             if (ctorArgs[i] == retval) {
-                                isReference = true;
+                                isReferenceToInputParam = true;
                                 methodBuilder.addStatement("$T expected = $L", returnType,
                                         ArgMap.getSymbolicName(MethodType.CTOR, i));
                                 break;
@@ -313,7 +323,7 @@ public class JUnitTestGenerator {
                     }
                     for (int i = 0; i < args.length; i++) {
                         if (args[i] == retval) {
-                            isReference = true;
+                            isReferenceToInputParam = true;
                             // Retval is a reference to argument i
                             methodBuilder.addStatement("$T expected = $L", returnType,
                                     ArgMap.getSymbolicName(MethodType.METHOD, i));
@@ -323,7 +333,7 @@ public class JUnitTestGenerator {
                 }
 
                 // If not a reference, create a new value for the retval
-                if (!isReference) {
+                if (!isReferenceToInputParam) {
                     if (isPrimitive(retval) || isArray) {
                         methodBuilder.addStatement("$T expected = $L", returnType,
                                 JavaLiteralFormatter.valueToString(retval));
@@ -336,20 +346,45 @@ public class JUnitTestGenerator {
                 if (isArray) {
                     //methodBuilder.addStatement("$T.assertArrayEquals(expected, retval)",
                     //        targetJUnit4 ? org.junit.Assert.class : Assertions.class);
-                    addStatementOrComment(methodBuilder, 
-                			EngineConfiguration.getInstance().surpressRegressionOracles,
-                			"$T.assertArrayEquals(expected, retval)",
-                			AssertClass) ;
+                	
+                	// For JUnit 4, assertArrayEquals on float and double values requires a delta
+                	if (targetJUnit4 && (retval instanceof float[] || retval instanceof Float[])) {
+                		addStatementOrComment(methodBuilder, 
+                    			EngineConfiguration.getInstance().surpressRegressionOracles,
+                    			"$T.assertArrayEquals(expected, retval, 0.0001f)",
+                    			AssertClass) ;
+                	}
+                	else if (targetJUnit4 && (retval instanceof double[] || retval instanceof Double[])) {
+                		addStatementOrComment(methodBuilder, 
+                    			EngineConfiguration.getInstance().surpressRegressionOracles,
+                    			"$T.assertArrayEquals(expected, retval, 0.0001)",
+                    			AssertClass) ;
+                	}
+                	else {
+                		addStatementOrComment(methodBuilder, 
+                    			EngineConfiguration.getInstance().surpressRegressionOracles,
+                    			"$T.assertArrayEquals(expected, retval)",
+                    			AssertClass) ;
+                	}
                 } else {
                     // For JUnit 4, assertEquals on float and double values requires a delta
-                    if (targetJUnit4 && (retval instanceof Float || retval instanceof Double)) {
+                    if (targetJUnit4 && retval instanceof Float) {
+                        //methodBuilder.addStatement("$T.assertEquals(expected, retval, 0.0001)",
+                        //       targetJUnit4 ? org.junit.Assert.class : Assertions.class);
+                        addStatementOrComment(methodBuilder, 
+                    			EngineConfiguration.getInstance().surpressRegressionOracles,
+                    			"$T.assertEquals(expected, retval, 0.0001f)",
+                    			AssertClass) ;
+                    } 
+                    else if (targetJUnit4 && retval instanceof Double) {
                         //methodBuilder.addStatement("$T.assertEquals(expected, retval, 0.0001)",
                         //       targetJUnit4 ? org.junit.Assert.class : Assertions.class);
                         addStatementOrComment(methodBuilder, 
                     			EngineConfiguration.getInstance().surpressRegressionOracles,
                     			"$T.assertEquals(expected, retval, 0.0001)",
                     			AssertClass) ;
-                    } else {
+                    }
+                    else {
                         //methodBuilder.addStatement("$T.assertEquals(expected, retval)",
                         //        targetJUnit4 ? org.junit.Assert.class : Assertions.class);
                     	addStatementOrComment(methodBuilder, 
@@ -358,7 +393,7 @@ public class JUnitTestGenerator {
                     			AssertClass) ;
                     }
                 }
-            }
+            } 
         }
 
         MethodSpec methodSpec = methodBuilder.build();
@@ -369,11 +404,14 @@ public class JUnitTestGenerator {
             return;
         }
         builtTestCases.add(hash);
-
-        methodBuilder.setName(createTestName(method.getName()));
+        if (violationDetected) this.countNumberOfViolationFound++ ;
+        
+        String testcaseName = createTestName(method.getName()) ;
+        //System.out.println("    " + testcaseName) ;
+        methodBuilder.setName(testcaseName);
         classBuilder.addMethod(methodBuilder.build());
     }
-    
+        
     /**
      * Build a statement, or add the statement as a comment.
      */
@@ -518,7 +556,7 @@ public class JUnitTestGenerator {
             }
             Object value = argMap.get(var);
             Type type = paramTypes.get(i);
-
+            
             // For object parameters create an instance of the object
             // If the argMap does not contain a value for the param, create arbitrary object
             if (type instanceof ClassType && (!argMap.containsKey(var) || value instanceof ObjectInstance)) {
@@ -531,7 +569,7 @@ public class JUnitTestGenerator {
                 // If this reference, and any subsequent ones in the chain are used only
                 // once, then we can skip the chain and define the value directly on this var
                 Optional<Object> finalValue = argMap.followRef(var, true);
-                if (finalValue.isPresent()) {
+            	if (finalValue.isPresent()) {
                     argMap.set(var, finalValue.get());
                     buildFromReference(methodBuilder, argMap, builtObjects, new ObjectRef(var), type);
                 } else {
@@ -621,6 +659,20 @@ public class JUnitTestGenerator {
             }
         }
     }
+    
+    /**
+     * Return all the declared fields of the class C, plus the declared
+     * fields of all its superclass except the class Object.
+     */
+    private List<Field> getFieldsAndSuperClassFields(Class<?> C) {
+    	List<Field> fields = new LinkedList<>() ;
+    	Class<?> D = C ;
+    	while (D != Object.class) {
+    	   fields.addAll(Arrays.stream(D.getDeclaredFields()).toList()) ;
+    	   D = D.getSuperclass() ;
+    	}
+    	return fields ;
+    }
 
     /**
      * Builds an object instance for the given arbitrary Java object by setting the
@@ -636,7 +688,10 @@ public class JUnitTestGenerator {
             return;
         }
 
-        Field[] fields = clazz.getDeclaredFields();
+        // WP: this does not include fields of the superclass, fixing is to
+        // include:
+        // Field[] fields = clazz.getDeclaredFields();
+        List<Field> fields = getFieldsAndSuperClassFields(clazz) ;
         buildObjectInstance(methodBuilder, var, clazz);
         for (Field field : fields) {
             field.setAccessible(true);
@@ -676,10 +731,36 @@ public class JUnitTestGenerator {
             return;
         }
 
+        // special case.
+        // Handle classes like Integer and Long as they do not actually have constructors
+        // (deprecated).
+        // Special handling:
+        if (clazz == Integer.class) {
+            methodBuilder.addStatement(clazz.getSimpleName() + " $L = 0", var);
+            return ;
+        }
+        if (clazz == Long.class) {
+            methodBuilder.addStatement(clazz.getSimpleName() + " $L = 0L", var);
+            return ;
+        }
+        if (clazz == Float.class) {
+            methodBuilder.addStatement(clazz.getSimpleName() + " $L = 0f", var);
+            return ;
+        }
+        if (clazz == Double.class) {
+            methodBuilder.addStatement(clazz.getSimpleName() + " $L = 0d", var);
+            return ;
+        }
+        if (clazz == Boolean.class) {
+            methodBuilder.addStatement(clazz.getSimpleName() + " $L = false", var);
+            return ;
+        }
+        
         Constructor<?> ctor = analyzer.getJavaConstructor(clazz);
         if (ctor == null) {
             throw new IllegalArgumentException("No constructor found for class " + clazz.getName());
         }
+        // IMPORTANT:
         // Make sure we use the constructor of the class we are generating the test for
         clazz = ctor.getDeclaringClass();
         Object[] arguments = ObjectInstantiation.generateArgs(ctor.getParameters(), MethodType.CTOR, null);
@@ -731,11 +812,37 @@ public class JUnitTestGenerator {
         if (inst == null) {
             return;
         }
+        
+        // special case.
+        // Classes like Integer and Long holds its primitive number in an ObjectInstance 
+        // field called "value", but it is not a usual field in the sense that 
+        // we can't do setField on it in the actual object.
+        // Special handling:
+        String inst_ty = inst.getType().toString() ;
+        if (inst_ty.equals("java.lang.Integer") 
+        		|| inst_ty.equals("java.lang.Long")
+        		|| inst_ty.equals("java.lang.Float")
+        		|| inst_ty.equals("java.lang.Double")
+        		|| inst_ty.equals("java.lang.Boolean")
+        		) {
+        	if (inst.getFields().size() > 0) {
+        		Object fieldValue = inst.getFields().get("value").getValue() ;
+        		methodBuilder.addStatement("$L = $L", var, JavaLiteralFormatter.valueToString(fieldValue)) ;
+        	}
+        	return ;
+        }
+        
+        // other cases
         for (Map.Entry<String, ObjectField> entry : inst.getFields().entrySet()) {
-            addSetFieldMethod();
+            
+        	addSetFieldMethod();
 
             ObjectField field = entry.getValue();
-            if (field.getValue() instanceof ObjectRef ref) {
+            // WP: adding a case the the field-value is just null:
+            if (field.getValue() == null) { 
+            	methodBuilder.addStatement("setField($L, \"$L\", $L)", var, entry.getKey(), null);
+            }
+            else if (field.getValue() instanceof ObjectRef ref) {
                 // If the reference is to another object, build that object first
                 // Note: Arrays etc. will always be references, i.e., not directly defined
                 // inside the ObjectInstance
@@ -744,7 +851,7 @@ public class JUnitTestGenerator {
                 }
                 methodBuilder.addStatement("setField($L, \"$L\", $L)", var, entry.getKey(), ref.getVar());
             } else {
-                methodBuilder.addStatement("setField($L, \"$L\", $L)", var, entry.getKey(),
+            	methodBuilder.addStatement("setField($L, \"$L\", $L)", var, entry.getKey(),
                         JavaLiteralFormatter.valueToString(entry.getValue().getValue()));
             }
         }
@@ -753,8 +860,10 @@ public class JUnitTestGenerator {
     /**
      * Adds a method to the test class that sets the value of a field in an object
      * using reflection.
+     * 
+     * <p>The original addSetField.
      */
-    private void addSetFieldMethod() {
+    private void addSetFieldMethodOLD() {
         // Make sure to only add the method once
         if (setFieldAdded) {
             return;
@@ -772,6 +881,43 @@ public class JUnitTestGenerator {
         methodBuilder.addStatement("field.setAccessible(true)");
         methodBuilder.addStatement("field.set(obj, value)");
 
+        setFieldAdded = true;
+        classBuilder.addMethod(methodBuilder.build());
+    }
+    
+    /**
+     * Adds a method to the test class that sets the value of a field in an object
+     * using reflection.
+     * 
+     * <p>WP: also iterates over super-classes to find the field.
+     */
+    private void addSetFieldMethod() {
+        // Make sure to only add the method once
+        if (setFieldAdded) {
+            return;
+        }
+
+        MethodSpec.Builder methodBuilder = MethodSpec.methodBuilder("setField")
+                .addModifiers(Modifier.PRIVATE)
+                .addException(Exception.class)
+                .addParameters(List.of(ParameterSpec.builder(Object.class, "obj").build(),
+                        ParameterSpec.builder(String.class, "fieldName").build(),
+                        ParameterSpec.builder(Object.class, "value").build()))
+                .returns(void.class);
+
+
+        String stmt =  "$T C = obj.getClass() ;\n"
+                     + "$T field = null ;\n"
+                     + "while (C != null) {\n"
+        	         + "  try { field = C.getDeclaredField($L);\n"
+        		     + "        field.setAccessible(true);\n"
+        	         + "        field.set(obj, value);\n"
+        	         + "        return ; } \n"
+        	         + "  catch (NoSuchFieldException e) { C = C.getSuperclass() ; }\n"
+                     + "}\n"
+    	             + "throw new NoSuchFieldException() " ;
+        
+        methodBuilder.addStatement(stmt, Class.class, Field.class, "fieldName") ;
         setFieldAdded = true;
         classBuilder.addMethod(methodBuilder.build());
     }
