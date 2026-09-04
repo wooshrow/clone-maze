@@ -41,8 +41,8 @@ public class CobaMaze {
 		//String CUT = "cobabench.CobaCUTObjectConstruction" ;
 		
 		// classes from Maze-bm:
-		//String CUT = "cobabench.mazebm.TriangleClassifier" ;
-		String CUT = "cobabench.mazebm.AckermannPeter" ;
+		String CUT = "cobabench.mazebm.TriangleClassifier" ;
+		//String CUT = "cobabench.mazebm.AckermannPeter" ;
 		//String CUT = "cobabench.mazebm.BinarySearch" ;
 		//String CUT = "cobabench.mazebm.BinaryTree" ; // challenge
 		//String CUT = "cobabench.mazebm.BitwiseManipulator" ;

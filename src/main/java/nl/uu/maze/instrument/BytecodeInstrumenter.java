@@ -220,7 +220,17 @@ public class BytecodeInstrumenter {
     /** Collect class files from classpath. */
     private List<ClassFileEntry> collectClassFiles(String className) {
         String simpleName = className.substring(className.lastIndexOf('.') + 1);
-        String packageName = className.substring(0, className.lastIndexOf('.'));
+        int lastDot = className.lastIndexOf('.') ;
+        String packageName = "" ;
+        if (lastDot > 0)
+        	packageName = className.substring(0,lastDot) ;
+        else if (lastDot == 0) 
+        	throw new IllegalArgumentException("class-name should not begin with a dot") ;
+        else  {
+        	// no dot in the class name, so it is a toplevel class (has no package)
+        	// leave packname empty.
+        	;
+        }
         String resourcePath = packageName.replace(".", "/");
         
         List<ClassFileEntry> classFiles = new ArrayList<>();
@@ -237,7 +247,7 @@ public class BytecodeInstrumenter {
                         String entryName = entry.getName();
 
                         // Check if it's in the right package and has the right name pattern
-                        if (entryName.startsWith(resourcePath + "/") &&
+                        if ((resourcePath.length()==0 || entryName.startsWith(resourcePath + "/")) &&
                                 entryName.endsWith(".class") &&
                                 entryName.substring(entryName.lastIndexOf('/') + 1).startsWith(simpleName)) {
                             found = true;
@@ -251,8 +261,10 @@ public class BytecodeInstrumenter {
                                 // Extract the class name without '.class' extension
                                 String name = entryName.substring(entryName.lastIndexOf('/') + 1,
                                         entryName.length() - 6);
-                                classFiles.add(new ClassFileEntry(name, packageName + '.' + name,
-                                        resourcePath + '/' + name, classBytes));
+                                classFiles.add(new ClassFileEntry(name, 
+                                		packageName.length()==0  ? name :  packageName + '.' + name,
+                                		resourcePath.length()==0 ? name :  resourcePath + '/' + name, 
+                                        classBytes));
                             } catch (IOException e) {
                                 logger.error("Error reading class from JAR: {}", entryName, e);
                             }
@@ -278,8 +290,10 @@ public class BytecodeInstrumenter {
                                     byte[] classBytes = Files.readAllBytes(f.toPath());
                                     //System.out.println("   grabbing bytes of " + f) ;
                                     String name = f.getName().substring(0, f.getName().length() - 6);
-                                    classFiles.add(new ClassFileEntry(name, packageName + '.' + name,
-                                            resourcePath + '/' + name, classBytes));
+                                    classFiles.add(new ClassFileEntry(name, 
+                                    		packageName.length()==0  ? name :  packageName + '.' + name,
+                                    		resourcePath.length()==0 ? name : resourcePath + '/' + name, 
+                                            classBytes));
                                     //System.out.println("   adding class-file of " + f) ;
                                     // Found class file
                                 } catch (IOException e) {

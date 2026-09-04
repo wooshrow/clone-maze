@@ -149,6 +149,7 @@ public class MazeCLI implements Callable<Integer> {
             
             // first copy options that need to be inspected during DSE runs to a dedicated configuration
             // info (acting like global vars).
+            EngineConfiguration.getInstance().targetClassName = this.className ;
             EngineConfiguration.getInstance().randomSeedingInConcreteDriven = this.useRandomSeeding ;
             EngineConfiguration.getInstance().constrainFPNumberParametersToNormalNumbers = this.constrainFPNumberParametersToNormalNumbers ;
             EngineConfiguration.getInstance().surpressRegressionOracles = this.surpressRegressionOracles ;

@@ -12,6 +12,13 @@ import picocli.CommandLine.Option;
 public class EngineConfiguration {
 	
 	/**
+	 * The name of the target class. It normally the class under test (CUT), but 
+	 * if the verification-mode is on, then it is the name of the target 
+	 * class containing check-methods.
+	 */
+	public String targetClassName ;
+	
+	/**
 	 * If true, the symbolic solver will add a constraint to every method
 	 * parameter x of floating-number type, that it should be a normal number
 	 * (so, not infinity nor NaN).
@@ -40,6 +47,9 @@ public class EngineConfiguration {
      * actual use.
      * 
      * <p>Default: false.
+     * 
+     * NOTE: PENDING. Implementing this needs a quite deep change in the symbolic execution
+     * flow. Basically by suppressing the call to ctor of CUT.
      */
     public boolean allowCUTfieldschangeByReflection = false ;
     
