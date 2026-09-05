@@ -26,7 +26,7 @@ class EX0{
 
 To generate tests for the example class we can do:
 
-`> java -jar maze.jar --classpath=somepath/classes --classname=MyPackage.EX0 --output-path=somepath/tests --minimalistic-suite=true -s=BFS -b=30`
+`> java -ea -jar maze.jar --classpath=somepath/classes --classname=MyPackage.EX0 --output-path=somepath/tests --minimalistic-suite=true -s=BFS -b=30`
 
 Note: instead of `maze.jar`, distributed jar may be named `maze-<version>-jar-with-dependencies.jar`.
 
@@ -82,9 +82,11 @@ class EX0_Check{
 ```
 To verify the property we can do:
 
-`> java -jar maze.jar --classpath=somepath/classes --classname=MyPackage.EX0_Check --indirectTarget=MyPackage.EX0 --output-path=somepath/tests --minimalistic-suite=true -s=BFS -b=30 --verificationMode=1`
+`> java -ea -jar maze.jar --classpath=somepath/classes --classname=MyPackage.EX0_Check --indirectTarget=MyPackage.EX0 --output-path=somepath/tests --minimalistic-suite=true -s=BFS -b=30 --verificationMode=1`
 
 The option `classname` specifies the target class, in this case it is the class containing check-methods. The `indirectTarget` option specifies that actual CUT; so, the class `EX0`. The option `verificationMode` enables the verification mode. This will cause the assertions in the the target check-methods to be symbolically verified along every program path that MAZE explores (and pass the assertions).
+
+**Note:** don't forget to turn out Java `-ea` option to enable Java's own assertion checking.
 
 If an assertion is violated, MAZE will report this, and a JUnit test  exposing the violation will be generated. If no violation is found, MAZE will also report this, though in this case no JUnit test will be generated. To be more precise, by virtue of its symbolic execution, even in the default testing mode MAZE also verifies assertions symbolically. The verification-mode differs that it only generates violation-exposing tests and it can target check-methods. In the testing-mode MAZE generates ordinary tests as well as violation-exposing tests, if there are any; the latter are marked with comments.
 
@@ -171,7 +173,7 @@ Note: instead of maze.jar, built/distributed jar may be named `maze-<version>-ja
 For example, to run the application on a specific Java class located in the `./target/classes` directory using BFS (rather than the default DFS), use the following command:
 
 ```bash
-java -jar maze.jar --classPath=./target/classes --className=com.example.MyClass ---output-path=tests --strategy=BFS
+java -ea -jar maze.jar --classPath=./target/classes --className=com.example.MyClass ---output-path=tests --strategy=BFS
 ```
 
 You can also run MAZE using Maven, using the following Maven command from MAZE project homedir:
@@ -225,6 +227,7 @@ Set the environment variables and install into your local maven repository as de
 | `--method-name`     | `-m`  | If specified, the name of the target method to generate tests for                                   | No       | All methods |
 | `--output-path`     | `-o`  | Output path to write generated test files to                               | Yes      | -           |
 | `--verificationMode` |  |  If it is some non-zero, this will turn on the verification-mode. MAZE stops after k violations. If k is -1 it will only stop after the time budget runs out. | No | 0 |
+| --error-type-to-find |  | Only relevant if verification-mode is on. This specifies the error type to search. Two types are available: AssertionError, to find assert violation. UnexpectedException, to find uncaught exception which is NOT assert violation. If not set (default), then any type of uncaught exception is searched. | No | "any" |
 | `--indirectTarget` |  | In the verification-mode, this specifies the fully qualified name of the actual CUT | No | - |
 | `--minimalistic-suite` |  | If true, only tests that add new coverage are generated. Unless the `--path-length-cov` option is set, this looks at instruction and branch coverage. | No | `false` |
 | `--path-length-cov` |  | If it is some non-zero k, MAZE will track coverage over elementary path of length k. If k is -1, MAZE will track coverage over prime paths. This option refers to paths over high level control flow graphs (CFG) of CUT's methods. | No | 0 |

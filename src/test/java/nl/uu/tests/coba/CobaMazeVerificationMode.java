@@ -27,6 +27,7 @@ public class CobaMazeVerificationMode {
 				      + sp + "--output-path=" + cobabenchPath + "/src/test/java/"
 				      + sp + "-s=BFS"
 				      + sp + "--verificationMode=1" 
+				      + sp + "--error-type-to-find=AssertionError"
 				      + sp + "--minimalistic-suite=true"
 				      + sp + "-b=60"				      
 				      + sp

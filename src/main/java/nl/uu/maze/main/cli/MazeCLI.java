@@ -114,6 +114,15 @@ public class MazeCLI implements Callable<Integer> {
     @Option(names = { "--verificationMode" }, description = "if >0, MAZE will stop after finding that number of unexpected exceptions thrown by CUT. Only violating tests are generated. (default: ${DEFAULT-VALUE})", defaultValue = "0", paramLabel = "<int>")
     private int verificationMode ;
     
+    @Option(names = { "--error-type-to-find" }, description = 
+    		             "The error type to find in the verification-mode. Only relevant if the mode is on. If AssertionError, only assert violation is searched."
+    		           + " If UnexpectedException, only uncaught exception which is NOT assert violation, is searched."
+    		           + " (default: ${DEFAULT-VALUE})", 
+    		           defaultValue = "any", 
+    		           paramLabel = "<string>", 
+    		           converter = PackageNameConverter.class)
+    private String errorTypeToFind ;
+    
     @Option(names = { "--do-not-close-z3-context" }, description = "When true, will not close internal z3 context. ONLY USED FOR TESTING MAZE. (default: ${DEFAULT-VALUE})", defaultValue = "false", paramLabel = "<true|false>")
     private boolean leaveZ3ContextOpen ;
     
@@ -158,6 +167,8 @@ public class MazeCLI implements Callable<Integer> {
             if (verificationMode != 0) {
             	// if verification mode is on, propagateUnexpectedExceptions is also set to true:
             	EngineConfiguration.getInstance().propagateUnexpectedExceptions = true ;
+                if (! this.errorTypeToFind.equals("any"))
+                	EngineConfiguration.getInstance().errorTypeToFind = this.errorTypeToFind ;
             }
             EngineConfiguration.getInstance().allowCUTfieldschangeByReflection = this.allowCUTfieldschangeByReflection ;
             EngineConfiguration.getInstance().enableDivisionByZeroChecking = this.enableDivisionByZeroChecking ;

@@ -180,9 +180,30 @@ public class JUnitTestGenerator {
         		  ! isExpectdedException(result.getTargetExceptionClass(), ctor) :
         		  ! isExpectdedException(result.getTargetExceptionClass(), method))) {
         	// violation, unexpected exception
-        	violationDetected = true ;
-        	logger.warn("a test for " + method.getName() + "(..,) throws an unexpected exception.");
+        	if (EngineConfiguration.getInstance().verificationMode == 0) {
+        		// in testing mode, any uncaught exception counts as violation:
+        		violationDetected = true ;
+        	}
+        	else {
+        		// in verification-mode, the engine can be configured to find a specific
+        		// kind of error:
+        		String errorToFind = EngineConfiguration.getInstance().errorTypeToFind ;
+        		if (errorToFind == null) {
+        			// not looking for any specify error-type. So, any counts as violation
+        			violationDetected = true ;
+        		}
+        		else if (errorToFind.equals("AssertionError") 
+        				&& AssertionError.class.isAssignableFrom(result.getTargetExceptionClass()))
+        			// only assertion violation counts:
+        			violationDetected = true ;
+        		else if (errorToFind.equals("UnexpectedException") 
+        				&& ! AssertionError.class.isAssignableFrom(result.getTargetExceptionClass()))
+        			// only uncaught exception which is NOT assertion error counts:
+        			violationDetected = true ;
+        	}
         }
+        if (violationDetected)
+        	logger.warn("a test for " + method.getName() + "(..,) throws an unexpected exception.");
         
         if (EngineConfiguration.getInstance().verificationMode != 0
         		&& ! violationDetected

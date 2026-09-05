@@ -79,6 +79,20 @@ public class EngineConfiguration {
     public int verificationMode = 0 ;
     
     /**
+     * If verificationMode is turned on, this specifies the specific error-type to find.
+     * Currently two types are supported: "AssertionError" and "UnexpectedException".
+     * If AssertionError is given, then only AssertionError exception will be considered
+     * as a violation. If UnexpectedException is given then only uncaught exception,
+     * which is NOT AssertionError will be counted as violation.
+     * 
+     * <p>If this option is left unspecified (null), then any type of uncaught exception,
+     * including AssertionError, counts as a violation.
+     * 
+     * <p>default: null.
+     */
+    public String errorTypeToFind = null ;
+    
+    /**
      * When true, MAZE will actively check expressions of the form x/y and x%y, whether a
      * division or remainder by zero error is possible. 
      * 
